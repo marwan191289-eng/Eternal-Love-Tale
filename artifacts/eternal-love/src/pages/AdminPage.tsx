@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, CustomCard, VideoItem } from "@/store/appStore";
 import { LOGO_IMG } from "@/data/defaultAssets";
+import { uploadMediaFile } from "@/lib/supabaseClient";
 
 type Tab = "site" | "sections" | "cards" | "gallery" | "videos" | "music" | "logo" | "passwords";
 
@@ -393,20 +394,23 @@ function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
     showSaved("تمت إضافة الصورة ✓");
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        if (dataUrl) addImage({ url: dataUrl, alt: file.name.replace(/\.[^.]+$/, "") });
-      };
-      reader.readAsDataURL(file);
-    });
-    showSaved(`تمت إضافة ${files.length} صورة ✓`);
-    e.target.value = "";
-    setActiveAdd(null);
+    try {
+      showSaved("جاري رفع الصور إلى Supabase...");
+      for (const file of Array.from(files)) {
+        const publicUrl = await uploadMediaFile(file, "images");
+        addImage({ url: publicUrl, alt: file.name.replace(/\.[^.]+$/, "") });
+      }
+      showSaved(`تم رفع وإضافة ${files.length} صورة ✓`);
+    } catch (error) {
+      console.error(error);
+      showSaved("فشل رفع الصور — تأكد من إعدادات Supabase");
+    } finally {
+      e.target.value = "";
+      setActiveAdd(null);
+    }
   }
 
   return (
@@ -498,15 +502,22 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
     showSaved("تمت إضافة الفيديو ✓");
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const objUrl = URL.createObjectURL(file);
-      addVideo({ url: objUrl, title: file.name.replace(/\.[^.]+$/, ""), type: "file" });
-    });
-    showSaved(`تمت إضافة ${files.length} فيديو ✓`);
-    e.target.value = "";
+    try {
+      showSaved("جاري رفع الفيديوهات إلى Supabase...");
+      for (const file of Array.from(files)) {
+        const publicUrl = await uploadMediaFile(file, "videos");
+        addVideo({ url: publicUrl, title: file.name.replace(/\.[^.]+$/, ""), type: "file" });
+      }
+      showSaved(`تم رفع وإضافة ${files.length} فيديو ✓`);
+    } catch (error) {
+      console.error(error);
+      showSaved("فشل رفع الفيديوهات — تأكد من إعدادات Supabase");
+    } finally {
+      e.target.value = "";
+    }
   }
 
   const typeLabels = { youtube: "يوتيوب", link: "رابط مباشر", file: "ملف" };

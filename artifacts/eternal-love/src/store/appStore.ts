@@ -1,14 +1,14 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { DEFAULT_GALLERY_IMAGES, DEFAULT_MUSIC_URL } from "@/data/defaultAssets";
+import { supabase } from "@/lib/supabaseClient";
 
-interface Section {
+export interface Section {
   id: string;
   label: string;
   visible: boolean;
 }
 
-interface ImageItem {
+export interface ImageItem {
   id: string;
   url: string;
   alt: string;
@@ -80,10 +80,45 @@ export const COMBINED_THEMES: ColorTheme[] = [
 
 type ThemeMode = "default" | "text" | "bg" | "combined";
 
+const DEFAULT_SECTIONS: Section[] = [
+  { id: "hero",         label: "قسم الهيرو",           visible: true },
+  { id: "celebration",  label: "نص الاحتفال",          visible: true },
+  { id: "poetry1",      label: "قصيدة الحكاية",        visible: true },
+  { id: "philosophy1",  label: "نص فطرة البشر",        visible: true },
+  { id: "philosophy2",  label: "نص الرجال نوعان",      visible: true },
+  { id: "gallery",      label: "معرض الصور",           visible: true },
+  { id: "videos",       label: "معرض الفيديوهات",      visible: true },
+  { id: "messages",     label: "قسم الرسائل",          visible: true },
+  { id: "marwan-card",  label: "رسالة مروان",          visible: true },
+  { id: "sara-card",    label: "تهنئة سارة وحمزة",     visible: true },
+];
+
+const DEFAULT_SETTINGS = {
+  adminPassword: "amira2026",
+  sitePassword: "amira2026",
+  sitePasswordEnabled: false,
+  marwanVisible: true,
+  saraVisible: true,
+  themeMode: "combined" as ThemeMode,
+  selectedTextPalette: "text-lime",
+  selectedBgPalette: "bg-dark-lime",
+  selectedCombinedTheme: "lime-celebration",
+  musicUrl: DEFAULT_MUSIC_URL,
+  volume: 0.7,
+  logoUrl: "",
+};
+
+type SettingKey = keyof typeof DEFAULT_SETTINGS;
+
 interface AppStore {
+  hydrated: boolean;
+  loading: boolean;
+  syncError: string;
+  loadRemoteData: () => Promise<void>;
+  subscribeRemoteData: () => () => void;
+
   adminPassword: string;
   setAdminPassword: (p: string) => void;
-
   sitePassword: string;
   setSitePassword: (p: string) => void;
   sitePasswordEnabled: boolean;
@@ -127,143 +162,245 @@ interface AppStore {
 
   musicUrl: string;
   setMusicUrl: (url: string) => void;
-
   volume: number;
   setVolume: (v: number) => void;
-
   logoUrl: string;
   setLogoUrl: (url: string) => void;
 }
 
-export const useAppStore = create<AppStore>()(
-  persist(
-    (set) => ({
-      adminPassword: "amira2026",
-      setAdminPassword: (p) => set({ adminPassword: p }),
+function logSyncError(context: string, error: unknown) {
+  console.error(`[Supabase sync] ${context}`, error);
+}
 
-      sitePassword: "amira2026",
-      setSitePassword: (p) => set({ sitePassword: p }),
-      sitePasswordEnabled: false,
-      setSitePasswordEnabled: (v) => set({ sitePasswordEnabled: v }),
+function remoteWrite<T>(context: string, promise: PromiseLike<{ error: unknown } | unknown>) {
+  void Promise.resolve(promise).then((result) => {
+    if (result && typeof result === "object" && "error" in result && result.error) {
+      logSyncError(context, result.error);
+    }
+  }).catch((error) => logSyncError(context, error));
+}
 
-      sections: [
-        { id: "hero",         label: "قسم الهيرو",           visible: true },
-        { id: "celebration",  label: "نص الاحتفال",          visible: true },
-        { id: "poetry1",      label: "قصيدة الحكاية",        visible: true },
-        { id: "philosophy1",  label: "نص فطرة البشر",        visible: true },
-        { id: "philosophy2",  label: "نص الرجال نوعان",      visible: true },
-        { id: "gallery",      label: "معرض الصور",           visible: true },
-        { id: "videos",       label: "معرض الفيديوهات",      visible: true },
-        { id: "messages",     label: "قسم الرسائل",          visible: true },
-        { id: "marwan-card",  label: "رسالة مروان",          visible: true },
-        { id: "sara-card",    label: "تهنئة سارة وحمزة",     visible: true },
-      ],
-      toggleSection: (id) =>
-        set((s) => ({
-          sections: s.sections.map((sec) =>
-            sec.id === id ? { ...sec, visible: !sec.visible } : sec
-          ),
-        })),
-      setSectionVisible: (id, v) =>
-        set((s) => ({
-          sections: s.sections.map((sec) =>
-            sec.id === id ? { ...sec, visible: v } : sec
-          ),
-        })),
+function upsertSetting(key: SettingKey, value: unknown) {
+  if (!supabase) return;
+  remoteWrite(`settings.${key}`, supabase.from("el_settings").upsert({ key, value }, { onConflict: "key" }));
+}
 
-      images: DEFAULT_GALLERY_IMAGES,
-      toggleImage: (id) =>
-        set((s) => ({
-          images: s.images.map((img) =>
-            img.id === id ? { ...img, visible: !img.visible } : img
-          ),
-        })),
-      addImage: (img) =>
-        set((s) => ({
-          images: [
-            ...s.images,
-            { ...img, id: `img-${Date.now()}-${Math.random()}`, visible: true },
-          ],
-        })),
-      removeImage: (id) =>
-        set((s) => ({ images: s.images.filter((img) => img.id !== id) })),
-      reorderImages: (from, to) =>
-        set((s) => {
-          const imgs = [...s.images];
-          const [moved] = imgs.splice(from, 1);
-          imgs.splice(to, 0, moved);
-          return { images: imgs };
-        }),
+function settingsPatch(rows: { key: string; value: unknown }[]) {
+  const patch: Partial<typeof DEFAULT_SETTINGS> = {};
+  for (const row of rows) {
+    if (row.key in DEFAULT_SETTINGS) {
+      (patch as Record<string, unknown>)[row.key] = row.value;
+    }
+  }
+  return patch;
+}
 
-      videos: [],
-      addVideo: (v) =>
-        set((s) => ({
-          videos: [
-            ...s.videos,
-            { ...v, id: `vid-${Date.now()}-${Math.random()}`, visible: true },
-          ],
-        })),
-      removeVideo: (id) =>
-        set((s) => ({ videos: s.videos.filter((v) => v.id !== id) })),
-      toggleVideo: (id) =>
-        set((s) => ({
-          videos: s.videos.map((v) =>
-            v.id === id ? { ...v, visible: !v.visible } : v
-          ),
-        })),
-      updateVideo: (id, updates) =>
-        set((s) => ({
-          videos: s.videos.map((v) =>
-            v.id === id ? { ...v, ...updates } : v
-          ),
-        })),
+const toImageRow = (img: ImageItem, position: number) => ({ id: img.id, url: img.url, alt: img.alt, visible: img.visible, position });
+const fromImageRow = (row: any): ImageItem => ({ id: row.id, url: row.url, alt: row.alt ?? "", visible: Boolean(row.visible) });
+const toVideoRow = (video: VideoItem, position: number) => ({ id: video.id, url: video.url, title: video.title, type: video.type, visible: video.visible, position });
+const fromVideoRow = (row: any): VideoItem => ({ id: row.id, url: row.url, title: row.title ?? "", type: row.type, visible: Boolean(row.visible) });
+const toCardRow = (card: CustomCard, position: number) => ({ id: card.id, variant: card.variant, title_ar: card.titleAr, title_en: card.titleEn, content_ar: card.contentAr, content_en: card.contentEn, visible: card.visible, position });
+const fromCardRow = (row: any): CustomCard => ({ id: row.id, variant: row.variant, titleAr: row.title_ar ?? "", titleEn: row.title_en ?? "", contentAr: row.content_ar ?? "", contentEn: row.content_en ?? "", visible: Boolean(row.visible) });
+const toSectionRow = (section: Section, position: number) => ({ id: section.id, label: section.label, visible: section.visible, position });
+const fromSectionRow = (row: any): Section => ({ id: row.id, label: row.label, visible: Boolean(row.visible) });
 
-      customCards: [],
-      addCustomCard: (card) =>
-        set((s) => ({
-          customCards: [
-            ...s.customCards,
-            { ...card, id: `card-${Date.now()}-${Math.random()}` },
-          ],
-        })),
-      updateCustomCard: (id, updates) =>
-        set((s) => ({
-          customCards: s.customCards.map((c) =>
-            c.id === id ? { ...c, ...updates } : c
-          ),
-        })),
-      removeCustomCard: (id) =>
-        set((s) => ({ customCards: s.customCards.filter((c) => c.id !== id) })),
-      toggleCustomCard: (id) =>
-        set((s) => ({
-          customCards: s.customCards.map((c) =>
-            c.id === id ? { ...c, visible: !c.visible } : c
-          ),
-        })),
+export const useAppStore = create<AppStore>()((set, get) => ({
+  hydrated: false,
+  loading: false,
+  syncError: "",
 
-      marwanVisible: true,
-      setMarwanVisible: (v) => set({ marwanVisible: v }),
-      saraVisible: true,
-      setSaraVisible: (v) => set({ saraVisible: v }),
+  ...DEFAULT_SETTINGS,
+  sections: DEFAULT_SECTIONS,
+  images: DEFAULT_GALLERY_IMAGES,
+  videos: [],
+  customCards: [],
 
-      themeMode: "combined",
-      setThemeMode: (m) => set({ themeMode: m }),
-      selectedTextPalette: "text-lime",
-      setSelectedTextPalette: (id) => set({ selectedTextPalette: id }),
-      selectedBgPalette: "bg-dark-lime",
-      setSelectedBgPalette: (id) => set({ selectedBgPalette: id }),
-      selectedCombinedTheme: "lime-celebration",
-      setSelectedCombinedTheme: (id) => set({ selectedCombinedTheme: id }),
+  loadRemoteData: async () => {
+    if (!supabase) {
+      set({ hydrated: true, loading: false, syncError: "" });
+      return;
+    }
 
-      musicUrl: DEFAULT_MUSIC_URL,
-      setMusicUrl: (url) => set({ musicUrl: url }),
+    set({ loading: true, syncError: "" });
+    try {
+      const [sectionsRes, imagesRes, videosRes, cardsRes, settingsRes] = await Promise.all([
+        supabase.from("el_sections").select("id,label,visible,position").order("position", { ascending: true }),
+        supabase.from("el_gallery_images").select("id,url,alt,visible,position").order("position", { ascending: true }),
+        supabase.from("el_videos").select("id,url,title,type,visible,position").order("position", { ascending: true }),
+        supabase.from("el_custom_cards").select("id,variant,title_ar,title_en,content_ar,content_en,visible,position").order("position", { ascending: true }),
+        supabase.from("el_settings").select("key,value"),
+      ]);
 
-      volume: 0.7,
-      setVolume: (v) => set({ volume: v }),
+      for (const res of [sectionsRes, imagesRes, videosRes, cardsRes, settingsRes]) {
+        if (res.error) throw res.error;
+      }
 
-      logoUrl: "",
-      setLogoUrl: (url) => set({ logoUrl: url }),
-    }),
-    { name: "amira-alaa-store-v5" }
-  )
-);
+      let sections = (sectionsRes.data ?? []).map(fromSectionRow);
+      let images = (imagesRes.data ?? []).map(fromImageRow);
+      const videos = (videosRes.data ?? []).map(fromVideoRow);
+      const customCards = (cardsRes.data ?? []).map(fromCardRow);
+      let remoteSettings = settingsPatch(settingsRes.data ?? []);
+
+      if (sections.length === 0) {
+        sections = DEFAULT_SECTIONS;
+        await supabase.from("el_sections").upsert(sections.map(toSectionRow), { onConflict: "id" });
+      }
+      if (images.length === 0) {
+        images = DEFAULT_GALLERY_IMAGES;
+        await supabase.from("el_gallery_images").upsert(images.map(toImageRow), { onConflict: "id" });
+      }
+
+      const existingSettingKeys = new Set((settingsRes.data ?? []).map((row) => row.key));
+      const missingSettings = (Object.keys(DEFAULT_SETTINGS) as SettingKey[])
+        .filter((key) => !existingSettingKeys.has(key))
+        .map((key) => ({ key, value: DEFAULT_SETTINGS[key] }));
+      if (missingSettings.length > 0) {
+        await supabase.from("el_settings").upsert(missingSettings, { onConflict: "key" });
+        remoteSettings = { ...DEFAULT_SETTINGS, ...remoteSettings };
+      }
+
+      set({
+        ...remoteSettings,
+        sections,
+        images,
+        videos,
+        customCards,
+        hydrated: true,
+        loading: false,
+        syncError: "",
+      });
+    } catch (error) {
+      logSyncError("loadRemoteData", error);
+      set({ hydrated: true, loading: false, syncError: "تعذر تحميل بيانات Supabase، يتم عرض البيانات الافتراضية مؤقتًا." });
+    }
+  },
+
+  subscribeRemoteData: () => {
+    if (!supabase) return () => {};
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { void get().loadRemoteData(); }, 250);
+    };
+    const channel = supabase
+      .channel("eternal-love-shared-content")
+      .on("postgres_changes", { event: "*", schema: "public", table: "el_sections" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "el_gallery_images" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "el_videos" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "el_custom_cards" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "el_settings" }, refresh)
+      .subscribe();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      const client = supabase;
+      if (client) void client.removeChannel(channel);
+    };
+  },
+
+  setAdminPassword: (p) => { set({ adminPassword: p }); upsertSetting("adminPassword", p); },
+  setSitePassword: (p) => { set({ sitePassword: p }); upsertSetting("sitePassword", p); },
+  setSitePasswordEnabled: (v) => { set({ sitePasswordEnabled: v }); upsertSetting("sitePasswordEnabled", v); },
+
+  toggleSection: (id) => {
+    const next = get().sections.map((sec) => sec.id === id ? { ...sec, visible: !sec.visible } : sec);
+    set({ sections: next });
+    const section = next.find((sec) => sec.id === id);
+    if (supabase && section) remoteWrite("toggleSection", supabase.from("el_sections").update({ visible: section.visible }).eq("id", id));
+  },
+  setSectionVisible: (id, v) => {
+    const next = get().sections.map((sec) => sec.id === id ? { ...sec, visible: v } : sec);
+    set({ sections: next });
+    if (supabase) remoteWrite("setSectionVisible", supabase.from("el_sections").update({ visible: v }).eq("id", id));
+  },
+
+  addImage: (img) => {
+    const item: ImageItem = { ...img, id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`, visible: true };
+    const next = [...get().images, item];
+    set({ images: next });
+    if (supabase) remoteWrite("addImage", supabase.from("el_gallery_images").insert(toImageRow(item, next.length - 1)));
+  },
+  toggleImage: (id) => {
+    const next = get().images.map((img) => img.id === id ? { ...img, visible: !img.visible } : img);
+    set({ images: next });
+    const image = next.find((img) => img.id === id);
+    if (supabase && image) remoteWrite("toggleImage", supabase.from("el_gallery_images").update({ visible: image.visible }).eq("id", id));
+  },
+  removeImage: (id) => {
+    set({ images: get().images.filter((img) => img.id !== id) });
+    if (supabase) remoteWrite("removeImage", supabase.from("el_gallery_images").delete().eq("id", id));
+  },
+  reorderImages: (from, to) => {
+    const imgs = [...get().images];
+    const [moved] = imgs.splice(from, 1);
+    imgs.splice(to, 0, moved);
+    set({ images: imgs });
+    if (supabase) remoteWrite("reorderImages", supabase.from("el_gallery_images").upsert(imgs.map(toImageRow), { onConflict: "id" }));
+  },
+
+  addVideo: (v) => {
+    const item: VideoItem = { ...v, id: `vid-${Date.now()}-${Math.random().toString(36).slice(2)}`, visible: true };
+    const next = [...get().videos, item];
+    set({ videos: next });
+    if (supabase) remoteWrite("addVideo", supabase.from("el_videos").insert(toVideoRow(item, next.length - 1)));
+  },
+  removeVideo: (id) => {
+    set({ videos: get().videos.filter((v) => v.id !== id) });
+    if (supabase) remoteWrite("removeVideo", supabase.from("el_videos").delete().eq("id", id));
+  },
+  toggleVideo: (id) => {
+    const next = get().videos.map((v) => v.id === id ? { ...v, visible: !v.visible } : v);
+    set({ videos: next });
+    const video = next.find((v) => v.id === id);
+    if (supabase && video) remoteWrite("toggleVideo", supabase.from("el_videos").update({ visible: video.visible }).eq("id", id));
+  },
+  updateVideo: (id, updates) => {
+    const next = get().videos.map((v) => v.id === id ? { ...v, ...updates } : v);
+    set({ videos: next });
+    const payload: Record<string, unknown> = {};
+    if (updates.url !== undefined) payload.url = updates.url;
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.type !== undefined) payload.type = updates.type;
+    if (updates.visible !== undefined) payload.visible = updates.visible;
+    if (supabase) remoteWrite("updateVideo", supabase.from("el_videos").update(payload).eq("id", id));
+  },
+
+  addCustomCard: (card) => {
+    const item: CustomCard = { ...card, id: `card-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    const next = [...get().customCards, item];
+    set({ customCards: next });
+    if (supabase) remoteWrite("addCustomCard", supabase.from("el_custom_cards").insert(toCardRow(item, next.length - 1)));
+  },
+  updateCustomCard: (id, updates) => {
+    const next = get().customCards.map((c) => c.id === id ? { ...c, ...updates } : c);
+    set({ customCards: next });
+    const payload: Record<string, unknown> = {};
+    if (updates.variant !== undefined) payload.variant = updates.variant;
+    if (updates.titleAr !== undefined) payload.title_ar = updates.titleAr;
+    if (updates.titleEn !== undefined) payload.title_en = updates.titleEn;
+    if (updates.contentAr !== undefined) payload.content_ar = updates.contentAr;
+    if (updates.contentEn !== undefined) payload.content_en = updates.contentEn;
+    if (updates.visible !== undefined) payload.visible = updates.visible;
+    if (supabase) remoteWrite("updateCustomCard", supabase.from("el_custom_cards").update(payload).eq("id", id));
+  },
+  removeCustomCard: (id) => {
+    set({ customCards: get().customCards.filter((c) => c.id !== id) });
+    if (supabase) remoteWrite("removeCustomCard", supabase.from("el_custom_cards").delete().eq("id", id));
+  },
+  toggleCustomCard: (id) => {
+    const next = get().customCards.map((c) => c.id === id ? { ...c, visible: !c.visible } : c);
+    set({ customCards: next });
+    const card = next.find((c) => c.id === id);
+    if (supabase && card) remoteWrite("toggleCustomCard", supabase.from("el_custom_cards").update({ visible: card.visible }).eq("id", id));
+  },
+
+  setMarwanVisible: (v) => { set({ marwanVisible: v }); upsertSetting("marwanVisible", v); },
+  setSaraVisible: (v) => { set({ saraVisible: v }); upsertSetting("saraVisible", v); },
+  setThemeMode: (m) => { set({ themeMode: m }); upsertSetting("themeMode", m); },
+  setSelectedTextPalette: (id) => { set({ selectedTextPalette: id }); upsertSetting("selectedTextPalette", id); },
+  setSelectedBgPalette: (id) => { set({ selectedBgPalette: id }); upsertSetting("selectedBgPalette", id); },
+  setSelectedCombinedTheme: (id) => { set({ selectedCombinedTheme: id }); upsertSetting("selectedCombinedTheme", id); },
+  setMusicUrl: (url) => { set({ musicUrl: url }); upsertSetting("musicUrl", url); },
+  setVolume: (v) => { set({ volume: v }); upsertSetting("volume", v); },
+  setLogoUrl: (url) => { set({ logoUrl: url }); upsertSetting("logoUrl", url); },
+}));

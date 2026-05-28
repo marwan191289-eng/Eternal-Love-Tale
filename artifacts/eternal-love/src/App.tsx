@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -90,12 +90,28 @@ function AppContent() {
   const isAdmin = location === "/admin";
   const [showSplash, setShowSplash] = useState(!isAdmin);
   const [fireworksActive, setFireworksActive] = useState(false);
+  const { hydrated, loadRemoteData, subscribeRemoteData } = useAppStore();
+
+  useEffect(() => {
+    void loadRemoteData();
+    return subscribeRemoteData();
+  }, [loadRemoteData, subscribeRemoteData]);
 
   const handleEnter = () => {
     setShowSplash(false);
     setFireworksActive(true);
     setTimeout(() => setFireworksActive(false), 8000);
   };
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "radial-gradient(ellipse at center, #080c00 0%, #030600 55%, #000000 100%)" }}>
+        <div className="text-center" style={{ color: "#C8FF00", fontFamily: "'Cairo', sans-serif", textShadow: "0 0 18px rgba(200,255,0,0.7)" }}>
+          جاري تحميل بيانات الاحتفال...
+        </div>
+      </div>
+    );
+  }
 
   if (isAdmin) {
     return <AdminPage />;
