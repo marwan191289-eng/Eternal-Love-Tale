@@ -1,0 +1,272 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 230 25% 5%;
+  --foreground: 45 100% 90%;
+  --border: 260 30% 20%;
+  --card: 230 20% 8%;
+  --card-foreground: 45 100% 92%;
+  --primary: 45 100% 65%;
+  --primary-foreground: 230 25% 5%;
+  --secondary: 280 60% 30%;
+  --secondary-foreground: 45 100% 92%;
+  --muted: 230 15% 15%;
+  --muted-foreground: 45 30% 60%;
+  --accent: 200 100% 60%;
+  --accent-foreground: 230 25% 5%;
+  --destructive: 0 84% 60%;
+  --input: 230 20% 15%;
+  --ring: 45 100% 65%;
+  --radius: 0.75rem;
+  --app-font-sans: 'Cairo', 'Amiri', 'Noto Naskh Arabic', sans-serif;
+  --app-font-serif: 'Amiri', Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Cairo', 'Amiri', 'Noto Naskh Arabic', sans-serif;
+    direction: rtl;
+  }
+}
+
+/* Neon glow keyframes */
+@keyframes neon-pulse-gold {
+  0%, 100% {
+    text-shadow:
+      0 0 6px #fff8dc,
+      0 0 12px #ffd700,
+      0 0 24px #ffd700,
+      0 0 48px #b8860b,
+      0 0 80px #b8860b;
+  }
+  50% {
+    text-shadow:
+      0 0 4px #fff8dc,
+      0 0 8px #ffd700,
+      0 0 16px #ffd700,
+      0 0 32px #b8860b;
+  }
+}
+
+@keyframes neon-pulse-cyan {
+  0%, 100% {
+    text-shadow:
+      0 0 6px #fff,
+      0 0 12px #0ff,
+      0 0 24px #0ff,
+      0 0 48px #00bcd4,
+      0 0 80px #006064;
+  }
+  50% {
+    text-shadow:
+      0 0 4px #fff,
+      0 0 8px #0ff,
+      0 0 16px #0ff,
+      0 0 32px #00bcd4;
+  }
+}
+
+@keyframes neon-pulse-rose {
+  0%, 100% {
+    text-shadow:
+      0 0 6px #fff,
+      0 0 12px #ff69b4,
+      0 0 24px #ff69b4,
+      0 0 48px #c2185b;
+  }
+  50% {
+    text-shadow:
+      0 0 4px #fff,
+      0 0 8px #ff69b4,
+      0 0 16px #ff69b4;
+  }
+}
+
+@keyframes neon-pulse-purple {
+  0%, 100% {
+    text-shadow:
+      0 0 6px #fff,
+      0 0 12px #da70d6,
+      0 0 24px #da70d6,
+      0 0 48px #7b1fa2;
+  }
+  50% {
+    text-shadow:
+      0 0 4px #fff,
+      0 0 8px #da70d6,
+      0 0 16px #da70d6;
+  }
+}
+
+@keyframes border-neon-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 8px #ffd70055,
+      0 0 20px #ffd70033,
+      inset 0 0 8px #ffd70022;
+    border-color: #ffd70088;
+  }
+  50% {
+    box-shadow:
+      0 0 16px #ffd70088,
+      0 0 40px #ffd70055,
+      inset 0 0 16px #ffd70033;
+    border-color: #ffd700cc;
+  }
+}
+
+@keyframes border-neon-cyan {
+  0%, 100% {
+    box-shadow:
+      0 0 8px #00ffff44,
+      0 0 20px #00ffff22,
+      inset 0 0 8px #00ffff11;
+    border-color: #00ffff66;
+  }
+  50% {
+    box-shadow:
+      0 0 16px #00ffff77,
+      0 0 40px #00ffff44,
+      inset 0 0 16px #00ffff22;
+    border-color: #00ffffaa;
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shimmer-text {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+@keyframes strip-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.neon-gold {
+  color: #ffd700;
+  animation: neon-pulse-gold 3s ease-in-out infinite;
+}
+
+.neon-cyan {
+  color: #00e5ff;
+  animation: neon-pulse-cyan 3s ease-in-out infinite;
+}
+
+.neon-rose {
+  color: #ff80ab;
+  animation: neon-pulse-rose 3s ease-in-out infinite;
+}
+
+.neon-purple {
+  color: #e040fb;
+  animation: neon-pulse-purple 3s ease-in-out infinite;
+}
+
+.neon-card-gold {
+  border: 1px solid #ffd70088;
+  animation: border-neon-glow 3s ease-in-out infinite;
+}
+
+.neon-card-cyan {
+  border: 1px solid #00ffff66;
+  animation: border-neon-cyan 3s ease-in-out infinite;
+}
+
+.shimmer-gold {
+  background: linear-gradient(90deg, #b8860b 0%, #ffd700 25%, #fffacd 50%, #ffd700 75%, #b8860b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text 4s linear infinite;
+}
+
+.float-gentle {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.scale-in {
+  animation: scale-in 0.6s ease-out forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: hsl(230, 25%, 8%); }
+::-webkit-scrollbar-thumb { background: #ffd70066; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ffd700aa; }
+
+/* Arabic text alignment */
+.arabic-justify {
+  text-align: justify;
+  text-align-last: right;
+  direction: rtl;
+  line-height: 2.2;
+}
+
+/* Star background */
+.stars-bg {
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(255,215,0,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(0,229,255,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(218,112,214,0.02) 0%, transparent 60%),
+    hsl(230, 25%, 5%);
+}
