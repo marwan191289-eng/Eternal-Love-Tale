@@ -86,7 +86,7 @@ export default function MusicPlayer() {
     <>
       {musicUrl && <audio ref={audioRef} src={musicUrl} loop preload="auto" />}
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+      <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-2">
         <AnimatePresence>
           {(showTooltip || waitingForInteraction) && !showVolume && (
             <motion.div

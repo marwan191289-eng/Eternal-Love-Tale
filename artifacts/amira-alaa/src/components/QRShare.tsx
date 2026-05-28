@@ -75,7 +75,7 @@ export default function QRShare() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 20 }}
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
-              className="fixed bottom-20 right-4 z-[70] rounded-2xl overflow-hidden"
+              className="fixed bottom-[76px] right-4 z-[70] rounded-2xl overflow-hidden"
               style={{
                 background: "rgba(3, 5, 0, 0.97)",
                 border: `1px solid ${accent}30`,

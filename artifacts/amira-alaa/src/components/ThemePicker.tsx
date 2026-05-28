@@ -29,7 +29,7 @@ export default function ThemePicker() {
     <>
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-24 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+        className="fixed bottom-36 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
         style={{
           background: open
             ? "linear-gradient(135deg, rgba(200,255,0,0.2), rgba(170,220,0,0.15))"
@@ -48,11 +48,11 @@ export default function ThemePicker() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, x: -20 }}
+            initial={{ opacity: 0, scale: 0.85, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.85, x: -20 }}
+            exit={{ opacity: 0, scale: 0.85, x: 20 }}
             transition={{ duration: 0.25 }}
-            className="fixed bottom-40 left-4 z-50 w-80 rounded-2xl overflow-hidden"
+            className="fixed bottom-[212px] right-4 z-50 w-80 rounded-2xl overflow-hidden"
             style={{
               background: "rgba(3,5,0,0.98)",
               border: "1px solid rgba(200,255,0,0.18)",
