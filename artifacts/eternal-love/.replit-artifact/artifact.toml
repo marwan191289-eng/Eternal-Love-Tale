@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Eternal Love"
+version = "1.0.0"
+id = "artifacts/eternal-love"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23637
+
+[services.development]
+run = "pnpm --filter @workspace/eternal-love run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/eternal-love", "run", "build" ]
+publicDir = "artifacts/eternal-love/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23637"
+BASE_PATH = "/"
