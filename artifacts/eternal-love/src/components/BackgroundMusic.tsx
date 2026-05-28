@@ -28,27 +28,19 @@ export function BackgroundMusic({ onRef }: BackgroundMusicProps) {
       await audio.play();
       setIsPlaying(true);
       setStarted(true);
-    } catch {
-      // autoplay blocked, wait for interaction
-    }
+    } catch { /* autoplay blocked — will play on first interaction */ }
   }, [started, volume]);
 
   useEffect(() => {
-    const timer = setTimeout(() => tryPlay(), 100);
-    const handleInteraction = () => {
+    const timer = setTimeout(() => tryPlay(), 150);
+    const onInteraction = () => {
       tryPlay();
-      ["click", "touchstart", "keydown", "scroll"].forEach(e =>
-        document.removeEventListener(e, handleInteraction)
-      );
+      ["click", "touchstart", "keydown"].forEach(e => document.removeEventListener(e, onInteraction));
     };
-    ["click", "touchstart", "keydown", "scroll", "mousemove"].forEach(e =>
-      document.addEventListener(e, handleInteraction)
-    );
+    ["click", "touchstart", "keydown", "mousemove"].forEach(e => document.addEventListener(e, onInteraction));
     return () => {
       clearTimeout(timer);
-      ["click", "touchstart", "keydown", "scroll", "mousemove"].forEach(e =>
-        document.removeEventListener(e, handleInteraction)
-      );
+      ["click", "touchstart", "keydown", "mousemove"].forEach(e => document.removeEventListener(e, onInteraction));
     };
   }, [tryPlay]);
 
@@ -105,29 +97,43 @@ export function BackgroundMusic({ onRef }: BackgroundMusicProps) {
   return (
     <>
       <audio ref={audioRef} src={musicFile} loop preload="auto" autoPlay playsInline style={{ display: "none" }} />
+
+      {/* Centered-bottom music control — visible between both sidebars */}
       <div
-        className="fixed bottom-6 right-6 z-30 flex flex-col items-start gap-2"
+        className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2"
         onMouseEnter={() => setShowSlider(true)}
         onMouseLeave={() => setShowSlider(false)}
       >
         {showSlider && (
-          <div className="glass rounded-2xl border border-gold/30 px-4 py-3 shadow-elegant flex flex-col items-center gap-2" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+          <div
+            className="glass rounded-2xl border border-gold/30 px-4 py-3 shadow-elegant flex flex-col items-center gap-2"
+            style={{ animation: "fadeInUp 0.2s ease-out" }}
+          >
             <span className="font-display text-[10px] tracking-widest text-gold/70 uppercase">Volume</span>
             <input
               type="range" min="0" max="1" step="0.01" value={volume}
               onChange={handleVolume}
-              className="w-24 h-1 rounded-full appearance-none cursor-pointer"
-              style={{ accentColor: "oklch(0.82 0.13 75)", background: `linear-gradient(to right, oklch(0.82 0.13 75) ${volume * 100}%, oklch(0.82 0.13 75 / 25%) ${volume * 100}%)` }}
+              className="w-28 h-1 rounded-full appearance-none cursor-pointer"
+              style={{
+                accentColor: "oklch(0.82 0.13 75)",
+                background: `linear-gradient(to right, oklch(0.82 0.13 75) ${volume * 100}%, oklch(0.82 0.13 75 / 25%) ${volume * 100}%)`,
+              }}
             />
             <span className="font-display text-[10px] text-gold/50">{Math.round(volume * 100)}%</span>
           </div>
         )}
+
         <button
-          type="button" onClick={toggle}
+          type="button"
+          onClick={toggle}
           title={isPlaying ? "إيقاف الموسيقى" : "تشغيل الموسيقى"}
           aria-label={isPlaying ? "إيقاف الموسيقى" : "تشغيل الموسيقى"}
           data-testid="button-music-toggle"
-          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur hover:shadow-glow cursor-pointer ${isPlaying ? "bg-gold/20 border-gold/60 text-gold hover:bg-gold/30 pulse-glow" : "bg-card/60 border-gold/30 text-muted-foreground hover:border-gold/50 hover:text-gold"}`}
+          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur hover:shadow-glow cursor-pointer
+            ${isPlaying
+              ? "bg-gold/20 border-gold/60 text-gold hover:bg-gold/30 pulse-glow"
+              : "bg-card/70 border-gold/35 text-muted-foreground hover:border-gold/60 hover:text-gold"
+            }`}
         >
           {isPlaying ? <WaveIcon /> : <MuteIcon />}
         </button>
