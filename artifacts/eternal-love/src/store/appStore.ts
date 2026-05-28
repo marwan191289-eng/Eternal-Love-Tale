@@ -87,7 +87,7 @@ const DEFAULT_SECTIONS: Section[] = [
   { id: "philosophy1",  label: "نص فطرة البشر",        visible: true },
   { id: "philosophy2",  label: "نص الرجال نوعان",      visible: true },
   { id: "gallery",      label: "معرض الصور",           visible: true },
-  { id: "videos",       label: "معرض الفيديوهات",      visible: true },
+  { id: "videos",       label: "نبض الحكاية",          visible: true },
   { id: "messages",     label: "قسم الرسائل",          visible: true },
   { id: "marwan-card",  label: "رسالة مروان",          visible: true },
   { id: "sara-card",    label: "تهنئة سارة وحمزة",     visible: true },

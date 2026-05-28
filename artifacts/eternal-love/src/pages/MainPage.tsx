@@ -517,10 +517,10 @@ export default function MainPage() {
             <div className="mb-8">
               <motion.div {...fadeUp()} className="text-center mb-6">
                 <h2 className="text-2xl font-bold mb-1" style={{ ...bodyFont, color: accent, textShadow: `0 0 20px ${accent}88`, ...centeredText }}>
-                  {lang === "ar" ? "🎬 معرض الفيديوهات" : "🎬 Video Gallery"}
+                  {lang === "ar" ? "🎬 نبض الحكاية" : "🎬 Heartbeats of the Story"}
                 </h2>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif", fontSize: "0.85rem" }}>
-                  {lang === "ar" ? "✦ ذكريات متحركة ✦" : "✦ Moving memories ✦"}
+                  {lang === "ar" ? "✦ لحظاتٌ ما زال صداها في القلب ✦" : "✦ Moments whose echo still lives in the heart ✦"}
                 </p>
               </motion.div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
