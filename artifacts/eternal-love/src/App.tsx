@@ -133,6 +133,29 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    const isExtensionNoise = (message: unknown) =>
+      typeof message === "string" &&
+      (message.includes("message port closed before a response was received") ||
+        message.includes("message channel closed before a response was received"));
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const message = event.reason instanceof Error ? event.reason.message : String(event.reason ?? "");
+      if (isExtensionNoise(message)) event.preventDefault();
+    };
+
+    const handleError = (event: ErrorEvent) => {
+      if (isExtensionNoise(event.message)) event.preventDefault();
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+    window.addEventListener("error", handleError);
+    return () => {
+      window.removeEventListener("unhandledrejection", handleRejection);
+      window.removeEventListener("error", handleError);
+    };
+  }, []);
+
   return (
     <LangProvider>
       <QueryClientProvider client={queryClient}>

@@ -14,10 +14,8 @@ const PLACEHOLDER_STRIPS = [
 
 function buildItems(images: { id: string; url: string; alt: string; visible: boolean }[]) {
   const visible = images.filter((i) => i.visible);
-  if (visible.length >= 4) return [...visible, ...visible]; // duplicate for infinite scroll
-  // fill with placeholders
-  const items = [...PLACEHOLDER_STRIPS, ...PLACEHOLDER_STRIPS];
-  return items;
+  if (visible.length >= 4) return [...visible, ...visible];
+  return [...PLACEHOLDER_STRIPS, ...PLACEHOLDER_STRIPS];
 }
 
 interface StripItemData {
@@ -29,34 +27,35 @@ interface StripItemData {
 }
 
 function StripItem({ item, size }: { item: StripItemData; size: number }) {
+  const commonStyle: React.CSSProperties = {
+    width: size,
+    height: size * 1.42,
+    marginBottom: 14,
+    border: "1px solid rgba(200,255,0,0.16)",
+    boxShadow: "0 12px 34px rgba(0,0,0,0.48), 0 0 18px rgba(200,255,0,0.08), inset 0 1px 0 rgba(255,255,255,0.045)",
+  };
+
   if (item.url) {
     return (
-      <div
-        className="flex-shrink-0 rounded-xl overflow-hidden"
-        style={{
-          width: size,
-          height: size * 1.35,
-          marginBottom: 10,
-          border: "1px solid rgba(255,215,0,0.12)",
-          boxShadow: "0 0 12px rgba(0,0,0,0.5)",
-        }}
-      >
-        <img src={item.url} alt={item.alt || ""} className="w-full h-full object-cover" />
+      <div className="flex-shrink-0 rounded-2xl overflow-hidden relative" style={commonStyle}>
+        <div className="absolute inset-0 z-10 pointer-events-none" style={{ boxShadow: "inset 0 0 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04)" }} />
+        <img
+          src={item.url}
+          alt={item.alt || ""}
+          className="w-full h-full object-cover"
+          style={{ filter: "saturate(1.12) contrast(1.05)", opacity: 0.78 }}
+        />
       </div>
     );
   }
   return (
     <div
-      className="flex-shrink-0 rounded-xl flex items-center justify-center"
+      className="flex-shrink-0 rounded-2xl flex items-center justify-center"
       style={{
-        width: size,
-        height: size * 1.35,
-        marginBottom: 10,
+        ...commonStyle,
         background: item.gradient,
-        border: "1px solid rgba(255,215,0,0.08)",
-        fontSize: "1.4rem",
-        opacity: 0.55,
-        boxShadow: "0 0 10px rgba(0,0,0,0.5)",
+        fontSize: "1.65rem",
+        opacity: 0.62,
       }}
     >
       {item.label}
@@ -106,24 +105,25 @@ function VerticalStrip({
       className="fixed top-0 bottom-0 overflow-hidden pointer-events-none"
       style={{
         [side]: 0,
-        width: size + 16,
+        width: size + 28,
         zIndex: 5,
-        maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
+        maskImage: "linear-gradient(to bottom, transparent 0%, black 13%, black 87%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 13%, black 87%, transparent 100%)",
       }}
     >
       <div
-        ref={trackRef}
-        className="flex flex-col items-center pt-20"
-        style={{ willChange: "transform", paddingLeft: 8, paddingRight: 8 }}
-      >
-        {/* Two full copies for infinite scroll */}
-        {items.map((item, i) => (
-          <StripItem key={`a-${i}`} item={item} size={size} />
-        ))}
-        {items.map((item, i) => (
-          <StripItem key={`b-${i}`} item={item} size={size} />
-        ))}
+        className="absolute top-0 bottom-0 pointer-events-none"
+        style={{
+          [side]: 0,
+          width: "100%",
+          background: side === "right"
+            ? "linear-gradient(to left, rgba(200,255,0,0.055), transparent)"
+            : "linear-gradient(to right, rgba(0,229,255,0.045), transparent)",
+        }}
+      />
+      <div ref={trackRef} className="relative flex flex-col items-center pt-24" style={{ willChange: "transform", paddingLeft: 12, paddingRight: 12 }}>
+        {items.map((item, i) => <StripItem key={`a-${i}`} item={item} size={size} />)}
+        {items.map((item, i) => <StripItem key={`b-${i}`} item={item} size={size} />)}
       </div>
     </div>
   );
@@ -134,7 +134,6 @@ export default function VerticalImageStrips() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Only show on larger screens
     const check = () => setShow(window.innerWidth >= 1100);
     check();
     window.addEventListener("resize", check);
@@ -147,8 +146,8 @@ export default function VerticalImageStrips() {
 
   return (
     <>
-      <VerticalStrip direction="up"   side="right" items={items} size={72} speed={0.4} />
-      <VerticalStrip direction="down" side="left"  items={items} size={72} speed={0.4} />
+      <VerticalStrip direction="up" side="right" items={items} size={84} speed={0.32} />
+      <VerticalStrip direction="down" side="left" items={items} size={84} speed={0.32} />
     </>
   );
 }

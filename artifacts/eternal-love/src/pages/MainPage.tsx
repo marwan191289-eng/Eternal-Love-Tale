@@ -56,7 +56,7 @@ function fadeUp(delay = 0) {
 }
 
 const centeredText: React.CSSProperties = { textAlign: "center", textAlignLast: "center" };
-const justifyText: React.CSSProperties = { textAlign: "justify", textAlignLast: "center" };
+const justifyText: React.CSSProperties = { textAlign: "justify", textAlignLast: "center", textJustify: "inter-word", hyphens: "auto" };
 
 /* ── Days-since counter ── */
 function DaysSinceCounter({ accent }: { accent: string }) {
@@ -340,7 +340,7 @@ export default function MainPage() {
         zIndex: 0,
       }} />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-24 pb-8">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-28 pb-8">
 
         {/* ── HERO ── */}
         <SectionWrapper id="hero">
