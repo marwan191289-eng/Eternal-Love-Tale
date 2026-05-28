@@ -7,6 +7,7 @@ import DevCard from "@/components/DevCard";
 import ThemePicker from "@/components/ThemePicker";
 import VerticalImageStrips from "@/components/VerticalImageStrips";
 import MusicPlayer from "@/components/MusicPlayer";
+import QRShare from "@/components/QRShare";
 import { useAppStore, TEXT_PALETTES, BG_PALETTES, COMBINED_THEMES, VideoItem } from "@/store/appStore";
 import { useLang } from "@/context/LangContext";
 
@@ -329,6 +330,7 @@ export default function MainPage() {
       <VerticalImageStrips />
       <ThemePicker />
       <MusicPlayer />
+      <QRShare />
       <SiteHeader />
 
       <div className="fixed inset-0 pointer-events-none" style={{
