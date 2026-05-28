@@ -1,340 +1,926 @@
-import { useState, useEffect } from "react";
-import {
-  Shield, Lock, Unlock, Eye, EyeOff, Trash2, Plus, Save, LogOut,
-  Images, MessageSquare, Settings, CheckCircle2, XCircle, ChevronLeft,
-} from "lucide-react";
-import { SEED_IMAGES, HIDDEN_PHOTOS_KEY, CUSTOM_MESSAGES_KEY, ADMIN_PASS } from "@/data/seedImages";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAppStore, CustomCard, VideoItem } from "@/store/appStore";
+import { LOGO_IMG } from "@/data/defaultAssets";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getHiddenPhotos(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_PHOTOS_KEY) ?? "[]")); } catch { return new Set(); }
-}
-function saveHiddenPhotos(set: Set<string>) {
-  localStorage.setItem(HIDDEN_PHOTOS_KEY, JSON.stringify([...set]));
-}
+type Tab = "site" | "sections" | "cards" | "gallery" | "videos" | "music" | "logo" | "passwords";
 
-type CustomMessage = { id: string; author: string; content: string; visible: boolean };
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "site",      label: "الموقع",         icon: "🌐" },
+  { id: "sections",  label: "الأقسام",         icon: "📋" },
+  { id: "gallery",   label: "المعرض",          icon: "🖼️" },
+  { id: "videos",    label: "الفيديوهات",      icon: "🎬" },
+  { id: "cards",     label: "البطاقات",        icon: "✉️" },
+  { id: "music",     label: "الموسيقى",        icon: "🎵" },
+  { id: "logo",      label: "الشعار",          icon: "🏷️" },
+  { id: "passwords", label: "كلمات المرور",    icon: "🔑" },
+];
 
-function getCustomMessages(): CustomMessage[] {
-  try { return JSON.parse(localStorage.getItem(CUSTOM_MESSAGES_KEY) ?? "[]"); } catch { return []; }
-}
-function saveCustomMessages(msgs: CustomMessage[]) {
-  localStorage.setItem(CUSTOM_MESSAGES_KEY, JSON.stringify(msgs));
-}
-
-async function fetchLockStatus(): Promise<boolean> {
-  try {
-    const r = await fetch("/api/admin/lock-status");
-    if (!r.ok) return false;
-    const d = await r.json() as { locked: boolean };
-    return d.locked;
-  } catch { return false; }
-}
-
-async function toggleLock(locked: boolean): Promise<boolean> {
-  try {
-    const r = await fetch(`/api/admin/${locked ? "unlock" : "lock"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: ADMIN_PASS }),
-    });
-    if (!r.ok) return locked;
-    const d = await r.json() as { locked: boolean };
-    return d.locked;
-  } catch { return locked; }
-}
-
-// ── Admin password gate ───────────────────────────────────────────────────────
-function AdminGate({ onAuth }: { onAuth: () => void }) {
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState(false);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pw === ADMIN_PASS) { onAuth(); }
-    else { setErr(true); setTimeout(() => setErr(false), 1500); setPw(""); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center px-6" dir="rtl" style={{ background: "radial-gradient(ellipse at center, #1a0b14, #08040e)" }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-full border border-gold/40 bg-gold/10 flex items-center justify-center">
-            <Shield size={32} style={{ color: "oklch(0.82 0.13 75)" }} />
-          </div>
-          <h1 className="font-display-ar text-3xl font-bold text-gradient-gold">لوحة الإدارة</h1>
-          <p className="mt-2 font-body-ar text-sm text-muted-foreground">أدخل كلمة مرور الإدارة</p>
-        </div>
-        <form onSubmit={submit} className="rounded-3xl border border-gold/30 bg-card/60 backdrop-blur p-8 space-y-4">
-          <input
-            type="password" value={pw} onChange={e => setPw(e.target.value)}
-            placeholder="••••••••••" dir="ltr"
-            className={`w-full rounded-xl border px-4 py-3 text-center tracking-widest bg-background/60 text-sm focus:outline-none transition-colors ${err ? "border-destructive text-destructive" : "border-gold/30 text-foreground focus:border-gold"}`}
-          />
-          {err && <p className="text-center font-body-ar text-sm text-destructive">كلمة المرور غير صحيحة</p>}
-          <button type="submit" className="w-full rounded-full bg-gold py-3 font-display-ar font-bold text-primary-foreground hover:shadow-glow hover:scale-[1.02] transition-all">
-            دخول
-          </button>
-          <a href="/" className="flex items-center justify-center gap-2 font-body-ar text-sm text-muted-foreground hover:text-gold transition-colors mt-2">
-            <ChevronLeft size={16} /> العودة للموقع
-          </a>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ── Tab: Site Control ─────────────────────────────────────────────────────────
-function SiteControlTab() {
-  const [locked, setLocked] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchLockStatus().then(v => setLocked(v));
-  }, []);
-
-  const handleToggle = async () => {
-    if (locked === null) return;
-    setLoading(true);
-    const result = await toggleLock(locked);
-    setLocked(result);
-    setLoading(false);
-  };
-
-  return (
-    <div className="space-y-6" dir="rtl">
-      <div className="rounded-2xl border border-gold/25 bg-card/40 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          {locked ? <Lock size={20} style={{ color: "oklch(0.82 0.13 75)" }} /> : <Unlock size={20} style={{ color: "oklch(0.78 0.12 165)" }} />}
-          <h3 className="font-display-ar text-xl font-bold text-gold">حالة الموقع</h3>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-body-ar text-base text-foreground/90">
-              {locked === null ? "جارٍ التحقق..." : locked ? "الموقع مُغلق — الزوار يرون صفحة إغلاق" : "الموقع مفتوح — يمكن للجميع الوصول"}
-            </p>
-            <p className="font-body-ar text-sm text-muted-foreground mt-1">
-              يؤثر على جميع زوار الموقع في اللحظة ذاتها
-            </p>
-          </div>
-          <button
-            onClick={handleToggle}
-            disabled={loading || locked === null}
-            className={`shrink-0 flex items-center gap-2 rounded-full px-6 py-3 font-display-ar text-sm font-bold transition-all hover:scale-105 disabled:opacity-50
-              ${locked ? "bg-green-700/80 text-white hover:bg-green-600" : "bg-destructive/80 text-white hover:bg-destructive"}`}
-          >
-            {locked ? <><Unlock size={16} /> فتح الموقع</> : <><Lock size={16} /> إغلاق الموقع</>}
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gold/25 bg-card/40 p-6">
-        <h3 className="font-display-ar text-xl font-bold text-gold mb-3">معلومات سريعة</h3>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "الصور", value: `${SEED_IMAGES.length}` },
-            { label: "الصور المخفية", value: `${getHiddenPhotos().size}` },
-            { label: "الرسائل المحفوظة", value: `${getCustomMessages().length}` },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl border border-gold/20 bg-background/40 p-4 text-center">
-              <p className="font-display-ar text-2xl font-bold text-gold">{s.value}</p>
-              <p className="font-body-ar text-xs text-muted-foreground mt-1">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Tab: Gallery ──────────────────────────────────────────────────────────────
-function GalleryTab() {
-  const [hidden, setHidden] = useState<Set<string>>(getHiddenPhotos);
-  const [saved, setSaved] = useState(false);
-
-  const toggle = (id: string) => {
-    setHidden(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-    setSaved(false);
-  };
-
-  const save = () => { saveHiddenPhotos(hidden); setSaved(true); setTimeout(() => setSaved(false), 2000); };
-  const showAll = () => { setHidden(new Set()); setSaved(false); };
-
-  return (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="font-body-ar text-sm text-muted-foreground">{hidden.size === 0 ? "جميع الصور مرئية" : `${hidden.size} صورة مخفية`}</p>
-        <div className="flex gap-2">
-          {hidden.size > 0 && (
-            <button onClick={showAll} className="flex items-center gap-1 rounded-full border border-gold/30 px-4 py-2 font-body-ar text-xs text-gold hover:bg-gold/10 transition-all">
-              <Eye size={14} /> إظهار الكل
-            </button>
-          )}
-          <button onClick={save} className={`flex items-center gap-1 rounded-full px-4 py-2 font-body-ar text-xs font-bold transition-all ${saved ? "bg-green-700/80 text-white" : "bg-gold text-primary-foreground hover:shadow-glow"}`}>
-            {saved ? <><CheckCircle2 size={14} /> تم الحفظ</> : <><Save size={14} /> حفظ التغييرات</>}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {SEED_IMAGES.map(img => {
-          const isHidden = hidden.has(img.id);
-          return (
-            <div
-              key={img.id}
-              onClick={() => toggle(img.id)}
-              className={`relative aspect-square overflow-hidden rounded-xl cursor-pointer border-2 transition-all hover:scale-105 ${isHidden ? "border-destructive/60 opacity-50 grayscale" : "border-gold/40 hover:border-gold"}`}
-            >
-              <img src={img.src} alt={img.caption} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                {isHidden
-                  ? <EyeOff size={22} className="text-destructive" />
-                  : <Eye size={22} className="text-gold opacity-0 group-hover:opacity-100" />
-                }
-              </div>
-              <div className="absolute bottom-0 inset-x-0 bg-black/70 px-2 py-1">
-                <p className="text-[9px] text-gold/80 font-body-ar text-center truncate">{img.caption}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <p className="font-body-ar text-xs text-muted-foreground text-center">اضغط على الصورة لإخفائها أو إظهارها · لا تنسَ الحفظ</p>
-    </div>
-  );
-}
-
-// ── Tab: Messages ─────────────────────────────────────────────────────────────
-function MessagesTab() {
-  const [messages, setMessages] = useState<CustomMessage[]>(getCustomMessages);
-  const [author, setAuthor] = useState("");
-  const [content, setContent] = useState("");
-  const [saved, setSaved] = useState(false);
-
-  const save = () => { saveCustomMessages(messages); setSaved(true); setTimeout(() => setSaved(false), 2000); };
-
-  const add = () => {
-    if (!content.trim()) return;
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), author: author.trim() || "ضيف", content: content.trim(), visible: true }]);
-    setAuthor(""); setContent(""); setSaved(false);
-  };
-
-  const toggleVisible = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, visible: !m.visible } : m));
-  const remove = (id: string) => { setMessages(prev => prev.filter(m => m.id !== id)); setSaved(false); };
-
-  return (
-    <div className="space-y-5" dir="rtl">
-      {/* Add new message */}
-      <div className="rounded-2xl border border-gold/25 bg-card/40 p-5 space-y-3">
-        <h4 className="font-display-ar text-lg font-bold text-gold flex items-center gap-2"><Plus size={18} /> إضافة رسالة جديدة</h4>
-        <input type="text" value={author} onChange={e => setAuthor(e.target.value)} placeholder="الاسم (اختياري)" dir="rtl"
-          className="w-full rounded-xl border border-gold/30 bg-background/60 px-4 py-2.5 font-body-ar text-sm focus:outline-none focus:border-gold transition-colors" />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="نص الرسالة..." rows={3} dir="rtl"
-          className="w-full rounded-xl border border-gold/30 bg-background/60 px-4 py-2.5 font-body-ar text-sm focus:outline-none focus:border-gold transition-colors resize-none" />
-        <button onClick={add} disabled={!content.trim()} className="w-full rounded-full bg-gold py-2.5 font-display-ar text-sm text-primary-foreground hover:shadow-glow disabled:opacity-50 transition-all">
-          إضافة
-        </button>
-      </div>
-
-      {/* Message list */}
-      {messages.length > 0 ? (
-        <div className="space-y-3">
-          {messages.map(m => (
-            <div key={m.id} className={`rounded-xl border p-4 flex gap-3 transition-all ${m.visible ? "border-gold/25 bg-card/40" : "border-destructive/30 bg-destructive/5 opacity-60"}`}>
-              <div className="flex-1 min-w-0">
-                <p className="font-display-ar text-sm font-bold text-gold mb-1">{m.author}</p>
-                <p className="font-body-ar text-sm text-muted-foreground leading-relaxed">{m.content}</p>
-              </div>
-              <div className="flex flex-col gap-2 shrink-0">
-                <button onClick={() => toggleVisible(m.id)} title={m.visible ? "إخفاء" : "إظهار"} className="p-1.5 rounded-lg hover:bg-gold/10 transition-colors text-muted-foreground hover:text-gold">
-                  {m.visible ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-                <button onClick={() => remove(m.id)} title="حذف" className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-center font-body-ar text-sm text-muted-foreground py-8">لا توجد رسائل مضافة حتى الآن</p>
-      )}
-
-      {messages.length > 0 && (
-        <button onClick={save} className={`w-full rounded-full py-3 font-display-ar text-sm font-bold transition-all hover:scale-[1.02] ${saved ? "bg-green-700/80 text-white" : "bg-gold text-primary-foreground hover:shadow-glow"}`}>
-          {saved ? "✓ تم الحفظ" : "حفظ الرسائل"}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ── Admin dashboard ───────────────────────────────────────────────────────────
-const TABS = [
-  { id: "control", label: "التحكم", icon: Settings },
-  { id: "gallery", label: "الصور", icon: Images },
-  { id: "messages", label: "الرسائل", icon: MessageSquare },
+const VARIANTS = [
+  { id: "gold",   label: "ذهبي",    color: "#FFD700" },
+  { id: "cyan",   label: "سماوي",   color: "#00e5ff" },
+  { id: "rose",   label: "وردي",    color: "#ff80ab" },
+  { id: "purple", label: "بنفسجي",  color: "#e040fb" },
 ] as const;
 
-type TabId = typeof TABS[number]["id"];
+export default function AdminPage() {
+  const {
+    adminPassword, setAdminPassword,
+    sitePassword, setSitePassword,
+    sitePasswordEnabled, setSitePasswordEnabled,
+    sections, toggleSection,
+    images, toggleImage, addImage, removeImage,
+    videos, addVideo, removeVideo, toggleVideo, updateVideo,
+    customCards, addCustomCard, updateCustomCard, removeCustomCard, toggleCustomCard,
+    marwanVisible, setMarwanVisible,
+    saraVisible, setSaraVisible,
+    musicUrl, setMusicUrl,
+    logoUrl, setLogoUrl,
+  } = useAppStore();
 
-function AdminDashboard({ onLogout }: { onLogout: () => void }) {
-  const [tab, setTab] = useState<TabId>("control");
+  const [inputPassword, setInputPassword] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("site");
+  const [saved, setSaved] = useState("");
+
+  function showSaved(msg = "تم الحفظ ✓") {
+    setSaved(msg);
+    setTimeout(() => setSaved(""), 2200);
+  }
+
+  function handleLogin() {
+    if (inputPassword === adminPassword) {
+      setAuthenticated(true);
+      setLoginError("");
+    } else {
+      setLoginError("كلمة المرور غير صحيحة");
+    }
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "radial-gradient(ellipse at center, #080c00 0%, #030600 55%, #000000 100%)" }} dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-2xl p-8 w-full max-w-md"
+          style={{
+            background: "linear-gradient(135deg, rgba(200,255,0,0.05) 0%, rgba(170,220,0,0.08) 100%)",
+            border: "1px solid rgba(200,255,0,0.28)",
+            boxShadow: "0 0 40px rgba(200,255,0,0.08)",
+          }}
+        >
+          <div className="text-center mb-6">
+            <img src={LOGO_IMG} alt="شعار" className="h-16 mx-auto mb-4 object-contain" style={{ filter: "drop-shadow(0 0 12px rgba(200,255,0,0.5))" }} />
+            <h1 className="text-2xl font-bold" style={{ fontFamily: "'Amiri', serif", color: "#C8FF00", textShadow: "0 0 16px rgba(200,255,0,0.5)" }}>
+              🔐 لوحة الإدارة
+            </h1>
+          </div>
+          <div className="space-y-4">
+            <input
+              type="password"
+              value={inputPassword}
+              onChange={(e) => setInputPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              placeholder="كلمة المرور"
+              autoFocus
+              className="w-full px-4 py-3 rounded-xl text-right"
+              style={{
+                background: "rgba(200,255,0,0.07)",
+                border: "1px solid rgba(200,255,0,0.28)",
+                color: "#C8FF00",
+                outline: "none",
+                fontFamily: "'Cairo', sans-serif",
+              }}
+            />
+            {loginError && <p className="text-sm text-center" style={{ color: "#ff6464", fontFamily: "'Cairo', sans-serif" }}>{loginError}</p>}
+            <button
+              onClick={handleLogin}
+              className="w-full py-3 rounded-xl font-bold transition-all duration-200 hover:scale-105"
+              style={{
+                background: "linear-gradient(135deg, rgba(200,255,0,0.18), rgba(170,220,0,0.28))",
+                border: "1px solid rgba(200,255,0,0.45)",
+                color: "#C8FF00",
+                fontFamily: "'Cairo', sans-serif",
+                boxShadow: "0 0 20px rgba(200,255,0,0.12)",
+              }}
+            >
+              دخول
+            </button>
+          </div>
+          <p className="text-center mt-6 text-sm" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif" }}>
+            <a href="/" style={{ color: "rgba(200,255,0,0.5)" }}>← العودة للموقع</a>
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className="min-h-screen" style={{ background: "radial-gradient(ellipse at center, #080c00 0%, #030600 55%, #000000 100%)" }} dir="rtl">
       {/* Header */}
-      <div className="fixed top-0 inset-x-0 z-40 border-b border-gold/20 bg-card/80 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+      <div className="sticky top-0 z-50" style={{
+        background: "rgba(3,5,0,0.97)",
+        borderBottom: "1px solid rgba(200,255,0,0.15)",
+        backdropFilter: "blur(20px)",
+      }}>
+        {/* Top accent */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+          background: "linear-gradient(90deg, transparent, #C8FF00 30%, #FFD700 50%, #C8FF00 70%, transparent)",
+          opacity: 0.6,
+        }} />
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield size={22} style={{ color: "oklch(0.82 0.13 75)" }} />
-            <h1 className="font-display-ar text-xl font-bold text-gradient-gold">لوحة إدارة الموقع</h1>
+            <img src={LOGO_IMG} alt="شعار" className="h-8 object-contain" style={{ filter: "drop-shadow(0 0 8px rgba(200,255,0,0.4))" }} />
+            <h1 className="text-lg font-bold" style={{ fontFamily: "'Amiri', serif", color: "#C8FF00", textShadow: "0 0 10px rgba(200,255,0,0.4)" }}>
+              ⚙️ لوحة إدارة الموقع
+            </h1>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="flex items-center gap-1.5 font-body-ar text-sm text-muted-foreground hover:text-gold transition-colors">
-              <ChevronLeft size={16} /> الموقع
+            <AnimatePresence>
+              {saved && (
+                <motion.span
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm px-3 py-1 rounded-lg"
+                  style={{
+                    background: "rgba(200,255,0,0.12)",
+                    border: "1px solid rgba(200,255,0,0.3)",
+                    color: "#C8FF00",
+                    fontFamily: "'Cairo', sans-serif",
+                  }}
+                >
+                  {saved}
+                </motion.span>
+              )}
+            </AnimatePresence>
+            <a href="/" className="text-sm px-3 py-1.5 rounded-lg" style={{
+              color: "rgba(200,255,0,0.6)",
+              border: "1px solid rgba(200,255,0,0.2)",
+              fontFamily: "'Cairo', sans-serif",
+            }}>
+              ← الموقع
             </a>
-            <button onClick={onLogout} className="flex items-center gap-1.5 rounded-full border border-gold/25 px-4 py-2 font-body-ar text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all">
-              <LogOut size={14} /> خروج
-            </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-6 flex gap-1 pb-0">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-5 py-3 font-body-ar text-sm border-b-2 transition-all ${tab === t.id ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-gold"}`}
-            >
-              <t.icon size={16} /> {t.label}
-            </button>
-          ))}
+        <div className="max-w-5xl mx-auto px-4 pb-0 overflow-x-auto">
+          <div className="flex gap-0.5 pb-0 min-w-max">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-all duration-200"
+                style={{
+                  fontFamily: "'Cairo', sans-serif",
+                  color: activeTab === tab.id ? "#C8FF00" : "rgba(255,255,255,0.4)",
+                  borderBottom: activeTab === tab.id ? "2px solid #C8FF00" : "2px solid transparent",
+                  background: activeTab === tab.id ? "rgba(200,255,0,0.05)" : "transparent",
+                }}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 pt-32 pb-20">
-        {tab === "control" && <SiteControlTab />}
-        {tab === "gallery" && <GalleryTab />}
-        {tab === "messages" && <MessagesTab />}
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+        {activeTab === "site" && (
+          <SiteTab sitePasswordEnabled={sitePasswordEnabled} setSitePasswordEnabled={setSitePasswordEnabled} sitePassword={sitePassword} setSitePassword={setSitePassword} showSaved={showSaved} />
+        )}
+        {activeTab === "sections" && (
+          <SectionsTab sections={sections} toggleSection={toggleSection} />
+        )}
+        {activeTab === "gallery" && (
+          <GalleryTab images={images} toggleImage={toggleImage} addImage={addImage} removeImage={removeImage} showSaved={showSaved} />
+        )}
+        {activeTab === "videos" && (
+          <VideosTab videos={videos} addVideo={addVideo} removeVideo={removeVideo} toggleVideo={toggleVideo} updateVideo={updateVideo} showSaved={showSaved} />
+        )}
+        {activeTab === "cards" && (
+          <CardsTab
+            marwanVisible={marwanVisible} setMarwanVisible={setMarwanVisible}
+            saraVisible={saraVisible} setSaraVisible={setSaraVisible}
+            customCards={customCards} addCustomCard={addCustomCard} updateCustomCard={updateCustomCard} removeCustomCard={removeCustomCard} toggleCustomCard={toggleCustomCard}
+            showSaved={showSaved}
+          />
+        )}
+        {activeTab === "music" && (
+          <MusicTab musicUrl={musicUrl} setMusicUrl={setMusicUrl} showSaved={showSaved} />
+        )}
+        {activeTab === "logo" && (
+          <LogoTab logoUrl={logoUrl} setLogoUrl={setLogoUrl} showSaved={showSaved} />
+        )}
+        {activeTab === "passwords" && (
+          <PasswordsTab adminPassword={adminPassword} setAdminPassword={setAdminPassword} sitePassword={sitePassword} setSitePassword={setSitePassword} showSaved={showSaved} />
+        )}
       </div>
     </div>
   );
 }
 
-// ── Entry ─────────────────────────────────────────────────────────────────────
-const ADMIN_AUTH_KEY = "el-admin-authed";
+/* ─── Shared UI ─── */
+function Card({ children, color = "lime" }: { children: React.ReactNode; color?: "lime" | "cyan" | "rose" | "purple" | "gold" }) {
+  const colors = {
+    lime:   { bg: "rgba(200,255,0,0.04)",   border: "rgba(200,255,0,0.18)",  title: "#C8FF00" },
+    gold:   { bg: "rgba(255,215,0,0.04)",   border: "rgba(255,215,0,0.18)",  title: "#FFD700" },
+    cyan:   { bg: "rgba(0,229,255,0.04)",   border: "rgba(0,229,255,0.18)",  title: "#00e5ff" },
+    rose:   { bg: "rgba(255,128,171,0.04)", border: "rgba(255,128,171,0.18)",title: "#ff80ab" },
+    purple: { bg: "rgba(224,64,251,0.04)",  border: "rgba(224,64,251,0.18)", title: "#e040fb" },
+  }[color];
+  return (
+    <div className="rounded-2xl p-6" style={{ background: colors.bg, border: `1px solid ${colors.border}`, boxShadow: "0 0 30px rgba(0,0,0,0.4)" }}>
+      {children}
+    </div>
+  );
+}
 
-export function AdminPage() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem(ADMIN_AUTH_KEY) === "yes");
+function CardTitle({ children, color = "#C8FF00" }: { children: React.ReactNode; color?: string }) {
+  return (
+    <h2 className="text-lg font-bold mb-5" style={{ color, fontFamily: "'Cairo', sans-serif", textShadow: `0 0 10px ${color}55` }}>
+      {children}
+    </h2>
+  );
+}
 
-  const onAuth = () => { sessionStorage.setItem(ADMIN_AUTH_KEY, "yes"); setAuthed(true); };
-  const onLogout = () => { sessionStorage.removeItem(ADMIN_AUTH_KEY); setAuthed(false); };
+function Input({ value, onChange, placeholder, dir = "rtl", type = "text" }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; dir?: string; type?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 rounded-lg"
+      style={{
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "#fff",
+        outline: "none",
+        fontFamily: "'Cairo', sans-serif",
+        direction: dir as "rtl" | "ltr",
+      }}
+    />
+  );
+}
 
-  return authed ? <AdminDashboard onLogout={onLogout} /> : <AdminGate onAuth={onAuth} />;
+function Btn({ onClick, children, variant = "lime", disabled }: {
+  onClick: () => void; children: React.ReactNode; variant?: "lime" | "gold" | "cyan" | "rose" | "danger"; disabled?: boolean;
+}) {
+  const styles = {
+    lime:   { bg: "rgba(200,255,0,0.15)",   border: "rgba(200,255,0,0.35)",   color: "#C8FF00"  },
+    gold:   { bg: "rgba(255,215,0,0.15)",   border: "rgba(255,215,0,0.35)",   color: "#FFD700"  },
+    cyan:   { bg: "rgba(0,229,255,0.15)",   border: "rgba(0,229,255,0.3)",    color: "#00e5ff"  },
+    rose:   { bg: "rgba(255,128,171,0.15)", border: "rgba(255,128,171,0.3)",  color: "#ff80ab"  },
+    danger: { bg: "rgba(255,50,50,0.12)",   border: "rgba(255,50,50,0.28)",   color: "#ff6464"  },
+  }[variant];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 hover:brightness-125 disabled:opacity-40"
+      style={{ background: styles.bg, border: `1px solid ${styles.border}`, color: styles.color, fontFamily: "'Cairo', sans-serif" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToggleBtn({ value, onToggle }: { value: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-150"
+      style={{
+        background: value ? "rgba(200,255,0,0.14)" : "rgba(255,100,100,0.12)",
+        border: value ? "1px solid rgba(200,255,0,0.35)" : "1px solid rgba(255,100,100,0.3)",
+        color: value ? "#C8FF00" : "#ff6464",
+        fontFamily: "'Cairo', sans-serif",
+        minWidth: "82px",
+      }}
+    >
+      {value ? "مُظهَر ✓" : "مُخفي ✗"}
+    </button>
+  );
+}
+
+/* ── SiteTab ── */
+function SiteTab({ sitePasswordEnabled, setSitePasswordEnabled, sitePassword, setSitePassword, showSaved }: {
+  sitePasswordEnabled: boolean; setSitePasswordEnabled: (v: boolean) => void;
+  sitePassword: string; setSitePassword: (v: string) => void;
+  showSaved: (msg?: string) => void;
+}) {
+  const [pass, setPass] = useState(sitePassword);
+  return (
+    <Card color="lime">
+      <CardTitle>🌐 إعدادات الموقع</CardTitle>
+      <div className="space-y-5">
+        <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div>
+            <p className="font-semibold" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>قفل الموقع بكلمة مرور</p>
+            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+              عند التفعيل يحتاج الزوار إلى إدخال كلمة مرور للدخول
+            </p>
+          </div>
+          <button
+            onClick={() => setSitePasswordEnabled(!sitePasswordEnabled)}
+            className="relative w-14 h-7 rounded-full transition-all duration-300"
+            style={{ background: sitePasswordEnabled ? "#C8FF00" : "rgba(255,255,255,0.2)" }}
+          >
+            <span className="absolute top-1 rounded-full w-5 h-5 bg-white transition-all duration-300" style={{ right: sitePasswordEnabled ? "4px" : "calc(100% - 24px)" }} />
+          </button>
+        </div>
+        <AnimatePresence>
+          {sitePasswordEnabled && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3">
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Cairo', sans-serif" }}>كلمة مرور الدخول للزوار</p>
+              <div className="flex gap-3">
+                <div className="flex-1"><Input value={pass} onChange={setPass} placeholder="كلمة المرور" /></div>
+                <Btn onClick={() => { setSitePassword(pass); showSaved(); }}>حفظ</Btn>
+              </div>
+              <p className="text-xs" style={{ color: "rgba(200,255,0,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+                كلمة المرور الحالية: <span style={{ color: "#C8FF00" }}>{sitePassword}</span>
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Card>
+  );
+}
+
+/* ── SectionsTab ── */
+function SectionsTab({ sections, toggleSection }: { sections: { id: string; label: string; visible: boolean }[]; toggleSection: (id: string) => void }) {
+  return (
+    <Card color="cyan">
+      <CardTitle color="#00e5ff">📋 إدارة الأقسام</CardTitle>
+      <div className="space-y-2.5">
+        {sections.map((sec) => (
+          <div key={sec.id} className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <span style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{sec.label}</span>
+            <ToggleBtn value={sec.visible} onToggle={() => toggleSection(sec.id)} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* ── GalleryTab ── */
+function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
+  images: { id: string; url: string; alt: string; visible: boolean }[];
+  toggleImage: (id: string) => void;
+  addImage: (img: { url: string; alt: string }) => void;
+  removeImage: (id: string) => void;
+  showSaved: (msg?: string) => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [alt, setAlt] = useState("");
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [activeAdd, setActiveAdd] = useState<"link" | "file" | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleAddByLink() {
+    if (!url.trim()) return;
+    addImage({ url: url.trim(), alt: alt.trim() || "صورة" });
+    setUrl(""); setAlt(""); setActiveAdd(null);
+    showSaved("تمت إضافة الصورة ✓");
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        if (dataUrl) addImage({ url: dataUrl, alt: file.name.replace(/\.[^.]+$/, "") });
+      };
+      reader.readAsDataURL(file);
+    });
+    showSaved(`تمت إضافة ${files.length} صورة ✓`);
+    e.target.value = "";
+    setActiveAdd(null);
+  }
+
+  return (
+    <Card color="cyan">
+      <div className="flex items-center justify-between mb-5">
+        <CardTitle color="#00e5ff">🖼️ إدارة صور المعرض ({images.length})</CardTitle>
+        <div className="flex gap-2">
+          <Btn onClick={() => setActiveAdd(activeAdd === "link" ? null : "link")} variant="cyan">🔗 رابط</Btn>
+          <Btn onClick={() => { setActiveAdd(null); fileRef.current?.click(); }} variant="lime">📁 رفع ملف</Btn>
+        </div>
+      </div>
+
+      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+
+      <AnimatePresence>
+        {activeAdd === "link" && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            className="mb-5 p-4 rounded-xl space-y-3" style={{ background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.14)" }}>
+            <p className="text-sm font-semibold" style={{ color: "#00e5ff", fontFamily: "'Cairo', sans-serif" }}>إضافة صورة برابط</p>
+            <Input value={url} onChange={setUrl} placeholder="https://example.com/image.jpg" dir="ltr" />
+            <Input value={alt} onChange={setAlt} placeholder="وصف الصورة (اختياري)" />
+            <div className="flex gap-2">
+              <Btn onClick={handleAddByLink} variant="cyan" disabled={!url.trim()}>+ إضافة</Btn>
+              <Btn onClick={() => setActiveAdd(null)} variant="danger">إلغاء</Btn>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 gap-3">
+        {images.map((img) => (
+          <div key={img.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <img
+              src={img.url}
+              alt={img.alt}
+              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+              style={{ opacity: img.visible ? 0.9 : 0.3, border: img.visible ? "1px solid rgba(200,255,0,0.2)" : "1px solid rgba(255,100,100,0.2)" }}
+              onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.15"; }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{img.alt}</p>
+              <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>
+                {img.url.startsWith("data:") ? "📁 ملف محلي" : img.url.slice(0, 55) + (img.url.length > 55 ? "…" : "")}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <ToggleBtn value={img.visible} onToggle={() => toggleImage(img.id)} />
+              {confirmDel === img.id ? (
+                <>
+                  <Btn onClick={() => { removeImage(img.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn>
+                  <Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn>
+                </>
+              ) : (
+                <Btn onClick={() => setConfirmDel(img.id)} variant="danger">حذف</Btn>
+              )}
+            </div>
+          </div>
+        ))}
+        {images.length === 0 && (
+          <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif" }}>لا توجد صور</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/* ── VideosTab ── */
+function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, showSaved }: {
+  videos: VideoItem[];
+  addVideo: (v: { url: string; title: string; type: VideoItem["type"] }) => void;
+  removeVideo: (id: string) => void;
+  toggleVideo: (id: string) => void;
+  updateVideo: (id: string, updates: Partial<VideoItem>) => void;
+  showSaved: (msg?: string) => void;
+}) {
+  const [addType, setAddType] = useState<"youtube" | "link" | "file">("youtube");
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleAdd() {
+    if (!url.trim()) return;
+    addVideo({ url: url.trim(), title: title.trim() || "فيديو", type: addType });
+    setUrl(""); setTitle(""); setShowAdd(false);
+    showSaved("تمت إضافة الفيديو ✓");
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((file) => {
+      const objUrl = URL.createObjectURL(file);
+      addVideo({ url: objUrl, title: file.name.replace(/\.[^.]+$/, ""), type: "file" });
+    });
+    showSaved(`تمت إضافة ${files.length} فيديو ✓`);
+    e.target.value = "";
+  }
+
+  const typeLabels = { youtube: "يوتيوب", link: "رابط مباشر", file: "ملف" };
+
+  return (
+    <Card color="rose">
+      <div className="flex items-center justify-between mb-5">
+        <CardTitle color="#ff80ab">🎬 إدارة الفيديوهات ({videos.length})</CardTitle>
+        <div className="flex gap-2">
+          <Btn onClick={() => setShowAdd(!showAdd)} variant="rose">{showAdd ? "✕ إغلاق" : "+ إضافة فيديو"}</Btn>
+          <Btn onClick={() => fileRef.current?.click()} variant="lime">📁 رفع ملف</Btn>
+        </div>
+      </div>
+
+      <input ref={fileRef} type="file" accept="video/*" multiple className="hidden" onChange={handleFileChange} />
+
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            className="mb-5 p-4 rounded-xl space-y-3" style={{ background: "rgba(255,128,171,0.04)", border: "1px solid rgba(255,128,171,0.18)" }}>
+            <p className="text-sm font-semibold" style={{ color: "#ff80ab", fontFamily: "'Cairo', sans-serif" }}>إضافة فيديو</p>
+
+            {/* Type selector */}
+            <div className="flex gap-2">
+              {(["youtube", "link"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setAddType(t)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={{
+                    background: addType === t ? "rgba(255,128,171,0.2)" : "rgba(255,255,255,0.04)",
+                    border: addType === t ? "1px solid rgba(255,128,171,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                    color: addType === t ? "#ff80ab" : "rgba(255,255,255,0.4)",
+                    fontFamily: "'Cairo', sans-serif",
+                  }}
+                >
+                  {typeLabels[t]}
+                </button>
+              ))}
+            </div>
+
+            <Input value={url} onChange={setUrl}
+              placeholder={addType === "youtube" ? "https://youtube.com/watch?v=..." : "https://example.com/video.mp4"}
+              dir="ltr" />
+            <Input value={title} onChange={setTitle} placeholder="عنوان الفيديو (اختياري)" />
+            <div className="flex gap-2">
+              <Btn onClick={handleAdd} variant="rose" disabled={!url.trim()}>+ إضافة</Btn>
+              <Btn onClick={() => setShowAdd(false)} variant="danger">إلغاء</Btn>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-3">
+        {videos.map((v) => (
+          <div key={v.id} className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            {editId === v.id ? (
+              <div className="p-3 flex gap-2">
+                <div className="flex-1">
+                  <Input value={editTitle} onChange={setEditTitle} placeholder="عنوان الفيديو" />
+                </div>
+                <Btn onClick={() => { updateVideo(v.id, { title: editTitle }); setEditId(null); showSaved(); }} variant="cyan">✓ حفظ</Btn>
+                <Btn onClick={() => setEditId(null)} variant="danger">إلغاء</Btn>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3.5">
+                <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{v.type === "youtube" ? "▶️" : v.type === "file" ? "📁" : "🔗"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{v.title}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{
+                      background: "rgba(255,128,171,0.12)",
+                      color: "#ff80ab",
+                      fontFamily: "'Cairo', sans-serif",
+                    }}>
+                      {typeLabels[v.type]}
+                    </span>
+                    <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>
+                      {v.url.startsWith("blob:") ? "ملف محلي" : v.url.slice(0, 45) + (v.url.length > 45 ? "…" : "")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <ToggleBtn value={v.visible} onToggle={() => toggleVideo(v.id)} />
+                  <Btn onClick={() => { setEditId(v.id); setEditTitle(v.title); }} variant="gold">تعديل</Btn>
+                  {confirmDel === v.id ? (
+                    <>
+                      <Btn onClick={() => { removeVideo(v.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn>
+                      <Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn>
+                    </>
+                  ) : (
+                    <Btn onClick={() => setConfirmDel(v.id)} variant="danger">حذف</Btn>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {videos.length === 0 && (
+          <div className="text-center py-10" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif" }}>
+            لا توجد فيديوهات — اضغط "+ إضافة فيديو" أو "رفع ملف" لإضافة أول فيديو
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/* ── CardsTab ── */
+function CardsTab({
+  marwanVisible, setMarwanVisible, saraVisible, setSaraVisible,
+  customCards, addCustomCard, updateCustomCard, removeCustomCard, toggleCustomCard, showSaved,
+}: {
+  marwanVisible: boolean; setMarwanVisible: (v: boolean) => void;
+  saraVisible: boolean; setSaraVisible: (v: boolean) => void;
+  customCards: CustomCard[];
+  addCustomCard: (c: Omit<CustomCard, "id">) => void;
+  updateCustomCard: (id: string, u: Partial<CustomCard>) => void;
+  removeCustomCard: (id: string) => void;
+  toggleCustomCard: (id: string) => void;
+  showSaved: (msg?: string) => void;
+}) {
+  const emptyCard: Omit<CustomCard, "id"> = { variant: "gold", titleAr: "", titleEn: "", contentAr: "", contentEn: "", visible: true };
+  const [newCard, setNewCard] = useState(emptyCard);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<CustomCard>>({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  function handleAdd() {
+    if (!newCard.contentAr.trim() && !newCard.contentEn.trim()) return;
+    addCustomCard(newCard);
+    setNewCard(emptyCard);
+    setShowAdd(false);
+    showSaved("تمت إضافة البطاقة ✓");
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Fixed cards */}
+      <Card color="purple">
+        <CardTitle color="#e040fb">✉️ بطاقات ثابتة</CardTitle>
+        <div className="space-y-3">
+          {[
+            { label: "رسالة مروان نجم",     visible: marwanVisible, toggle: () => setMarwanVisible(!marwanVisible) },
+            { label: "تهنئة سارة وحمزة",    visible: saraVisible,   toggle: () => setSaraVisible(!saraVisible)   },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <span style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{item.label}</span>
+              <ToggleBtn value={item.visible} onToggle={item.toggle} />
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Custom cards */}
+      <Card color="gold">
+        <div className="flex items-center justify-between mb-5">
+          <CardTitle>💬 بطاقات مخصصة ({customCards.length})</CardTitle>
+          <Btn onClick={() => setShowAdd(!showAdd)} variant="gold">{showAdd ? "✕ إغلاق" : "+ إضافة بطاقة"}</Btn>
+        </div>
+
+        <AnimatePresence>
+          {showAdd && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+              className="mb-6 p-4 rounded-xl space-y-3" style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.18)" }}>
+              <p className="font-bold text-sm" style={{ color: "#FFD700", fontFamily: "'Cairo', sans-serif" }}>بطاقة جديدة</p>
+              <div className="flex gap-2 flex-wrap">
+                {VARIANTS.map((v) => (
+                  <button key={v.id} onClick={() => setNewCard({ ...newCard, variant: v.id })}
+                    className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                    style={{
+                      background: newCard.variant === v.id ? `${v.color}33` : "rgba(255,255,255,0.06)",
+                      border: newCard.variant === v.id ? `1px solid ${v.color}` : "1px solid rgba(255,255,255,0.15)",
+                      color: v.color, fontFamily: "'Cairo', sans-serif",
+                    }}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>عنوان (عربي)</label>
+                  <Input value={newCard.titleAr} onChange={(v) => setNewCard({ ...newCard, titleAr: v })} placeholder="عنوان البطاقة بالعربي" />
+                </div>
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif", direction: "ltr", textAlign: "right" }}>Title (English)</label>
+                  <Input value={newCard.titleEn} onChange={(v) => setNewCard({ ...newCard, titleEn: v })} placeholder="Card title in English" dir="ltr" />
+                </div>
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>المحتوى (عربي) *</label>
+                  <textarea value={newCard.contentAr} onChange={(e) => setNewCard({ ...newCard, contentAr: e.target.value })} rows={4}
+                    placeholder="نص البطاقة بالعربي..." className="w-full px-3 py-2 rounded-lg resize-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", outline: "none", fontFamily: "'Cairo', sans-serif", direction: "rtl" }} />
+                </div>
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif", direction: "ltr", textAlign: "right" }}>Content (English)</label>
+                  <textarea value={newCard.contentEn} onChange={(e) => setNewCard({ ...newCard, contentEn: e.target.value })} rows={4}
+                    placeholder="Card content in English..." className="w-full px-3 py-2 rounded-lg resize-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", outline: "none", fontFamily: "'Cairo', sans-serif", direction: "ltr" }} />
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Btn onClick={() => setShowAdd(false)} variant="danger">إلغاء</Btn>
+                <Btn onClick={handleAdd} variant="cyan" disabled={!newCard.contentAr.trim() && !newCard.contentEn.trim()}>✓ إضافة</Btn>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {customCards.length === 0 && !showAdd && (
+          <div className="text-center py-10" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif" }}>
+            لا توجد بطاقات مخصصة بعد — اضغط "+ إضافة بطاقة" لإنشاء أول بطاقة
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {customCards.map((card) => (
+            <div key={card.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+              {editId === card.id ? (
+                <div className="p-4 space-y-3">
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {VARIANTS.map((v) => (
+                      <button key={v.id} onClick={() => setEditData({ ...editData, variant: v.id })}
+                        className="px-3 py-1 rounded-lg text-xs font-bold"
+                        style={{
+                          background: editData.variant === v.id ? `${v.color}33` : "rgba(255,255,255,0.06)",
+                          border: editData.variant === v.id ? `1px solid ${v.color}` : "1px solid rgba(255,255,255,0.15)",
+                          color: v.color, fontFamily: "'Cairo', sans-serif",
+                        }}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>عنوان (عربي)</label>
+                      <Input value={editData.titleAr ?? ""} onChange={(v) => setEditData({ ...editData, titleAr: v })} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif", direction: "ltr", textAlign: "right" }}>Title (English)</label>
+                      <Input value={editData.titleEn ?? ""} onChange={(v) => setEditData({ ...editData, titleEn: v })} dir="ltr" />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>المحتوى (عربي)</label>
+                      <textarea value={editData.contentAr ?? ""} onChange={(e) => setEditData({ ...editData, contentAr: e.target.value })} rows={3}
+                        className="w-full px-3 py-2 rounded-lg resize-none"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", outline: "none", fontFamily: "'Cairo', sans-serif", direction: "rtl" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif", direction: "ltr", textAlign: "right" }}>Content (English)</label>
+                      <textarea value={editData.contentEn ?? ""} onChange={(e) => setEditData({ ...editData, contentEn: e.target.value })} rows={3}
+                        className="w-full px-3 py-2 rounded-lg resize-none"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", outline: "none", fontFamily: "'Cairo', sans-serif", direction: "ltr" }} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Btn onClick={() => setEditId(null)} variant="danger">إلغاء</Btn>
+                    <Btn onClick={() => { updateCustomCard(editId!, editData); setEditId(null); setEditData({}); showSaved(); }} variant="cyan">✓ حفظ</Btn>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 p-3.5">
+                  <div className="w-3 rounded-full flex-shrink-0 self-stretch" style={{ background: VARIANTS.find((v) => v.id === card.variant)?.color ?? "#C8FF00", minHeight: "40px" }} />
+                  <div className="flex-1 min-w-0">
+                    {card.titleAr && <p className="font-semibold text-sm mb-0.5 truncate" style={{ color: "#C8FF00", fontFamily: "'Cairo', sans-serif" }}>{card.titleAr}</p>}
+                    <p className="text-sm line-clamp-2" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Cairo', sans-serif" }}>{card.contentAr || card.contentEn}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <ToggleBtn value={card.visible} onToggle={() => toggleCustomCard(card.id)} />
+                    <Btn onClick={() => { setEditId(card.id); setEditData({ ...card }); }} variant="gold">تعديل</Btn>
+                    {confirmDelete === card.id ? (
+                      <>
+                        <Btn onClick={() => { removeCustomCard(card.id); setConfirmDelete(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد الحذف</Btn>
+                        <Btn onClick={() => setConfirmDelete(null)}>إلغاء</Btn>
+                      </>
+                    ) : (
+                      <Btn onClick={() => setConfirmDelete(card.id)} variant="danger">حذف</Btn>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ── MusicTab ── */
+function MusicTab({ musicUrl, setMusicUrl, showSaved }: {
+  musicUrl: string; setMusicUrl: (v: string) => void; showSaved: (msg?: string) => void;
+}) {
+  const [url, setUrl] = useState(musicUrl);
+  return (
+    <Card color="lime">
+      <CardTitle>🎵 إعدادات الموسيقى</CardTitle>
+      <div className="space-y-4">
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+          أدخل رابط ملف MP3 مباشر (يُشغَّل تلقائياً في مشغّل الموسيقى)
+        </p>
+        <div className="flex gap-3">
+          <div className="flex-1"><Input value={url} onChange={setUrl} placeholder="https://example.com/music.mp3" dir="ltr" /></div>
+          <Btn onClick={() => { setMusicUrl(url.trim()); showSaved(); }} disabled={!url.trim()}>حفظ</Btn>
+        </div>
+        {musicUrl && (
+          <div className="p-3 rounded-lg" style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.14)" }}>
+            <p className="text-xs mb-1" style={{ color: "rgba(200,255,0,0.5)", fontFamily: "'Cairo', sans-serif" }}>الرابط الحالي:</p>
+            <p className="text-xs break-all" style={{ color: "#C8FF00", direction: "ltr", fontFamily: "monospace" }}>{musicUrl}</p>
+          </div>
+        )}
+        <Btn onClick={() => { setMusicUrl(""); setUrl(""); showSaved("تم حذف الموسيقى ✓"); }} variant="danger" disabled={!musicUrl}>
+          🗑️ إزالة الموسيقى
+        </Btn>
+      </div>
+    </Card>
+  );
+}
+
+/* ── LogoTab ── */
+function LogoTab({ logoUrl, setLogoUrl, showSaved }: {
+  logoUrl: string; setLogoUrl: (v: string) => void; showSaved: (msg?: string) => void;
+}) {
+  const [url, setUrl] = useState(logoUrl);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (dataUrl) { setLogoUrl(dataUrl); setUrl(dataUrl); showSaved("تم رفع الشعار ✓"); }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  const currentLogo = logoUrl || LOGO_IMG;
+
+  return (
+    <Card color="lime">
+      <CardTitle>🏷️ إدارة شعار الموقع</CardTitle>
+      <div className="space-y-5">
+        <div className="flex justify-center">
+          <div className="rounded-2xl p-6 flex flex-col items-center gap-3" style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.18)" }}>
+            <p className="text-xs" style={{ color: "rgba(200,255,0,0.5)", fontFamily: "'Cairo', sans-serif" }}>الشعار الحالي</p>
+            <img src={currentLogo} alt="الشعار الحالي" style={{ height: "80px", objectFit: "contain", filter: "drop-shadow(0 0 16px rgba(200,255,0,0.5))" }} />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold mb-2" style={{ color: "#C8FF00", fontFamily: "'Cairo', sans-serif" }}>رفع شعار جديد</p>
+          <div className="flex gap-3">
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <Btn onClick={() => fileRef.current?.click()} variant="lime">📁 اختيار ملف</Btn>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold mb-2" style={{ color: "#C8FF00", fontFamily: "'Cairo', sans-serif" }}>أو أدخل رابط الشعار</p>
+          <div className="flex gap-3">
+            <div className="flex-1"><Input value={url} onChange={setUrl} placeholder="https://example.com/logo.png" dir="ltr" /></div>
+            <Btn onClick={() => { setLogoUrl(url.trim()); showSaved(); }} disabled={!url.trim()}>حفظ</Btn>
+          </div>
+        </div>
+
+        {logoUrl && (
+          <Btn onClick={() => { setLogoUrl(""); setUrl(""); showSaved("تمت إعادة الشعار الافتراضي ✓"); }} variant="danger">
+            🔄 إعادة الشعار الافتراضي
+          </Btn>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/* ── PasswordsTab ── */
+function PasswordsTab({ adminPassword, setAdminPassword, sitePassword, setSitePassword, showSaved }: {
+  adminPassword: string; setAdminPassword: (v: string) => void;
+  sitePassword: string; setSitePassword: (v: string) => void;
+  showSaved: (msg?: string) => void;
+}) {
+  const [newAdmin, setNewAdmin] = useState("");
+  const [newSite, setNewSite] = useState("");
+  return (
+    <div className="space-y-5">
+      <Card color="lime">
+        <CardTitle>🔑 كلمة مرور الإدارة</CardTitle>
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+            كلمة المرور الحالية: <span style={{ color: "#C8FF00", fontFamily: "monospace" }}>{adminPassword}</span>
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1"><Input value={newAdmin} onChange={setNewAdmin} placeholder="كلمة مرور جديدة" type="password" /></div>
+            <Btn onClick={() => { if (newAdmin.trim()) { setAdminPassword(newAdmin.trim()); setNewAdmin(""); showSaved(); } }}>حفظ</Btn>
+          </div>
+        </div>
+      </Card>
+      <Card color="cyan">
+        <CardTitle color="#00e5ff">🔒 كلمة مرور الموقع</CardTitle>
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+            كلمة المرور الحالية: <span style={{ color: "#00e5ff", fontFamily: "monospace" }}>{sitePassword}</span>
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1"><Input value={newSite} onChange={setNewSite} placeholder="كلمة مرور جديدة للزوار" type="password" /></div>
+            <Btn onClick={() => { if (newSite.trim()) { setSitePassword(newSite.trim()); setNewSite(""); showSaved(); } }} variant="cyan">حفظ</Btn>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
 }
