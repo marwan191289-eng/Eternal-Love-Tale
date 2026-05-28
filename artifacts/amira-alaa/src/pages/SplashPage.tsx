@@ -170,7 +170,7 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 1 }}
           className="relative mx-auto mb-6 flex items-center justify-center"
-          style={{ width: "220px", height: "220px" }}
+          style={{ width: "290px", height: "290px" }}
         >
           <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(200,255,0,0.35)", animation: "ring-spin-cw 10s linear infinite" }} />
           <div className="absolute inset-4 rounded-full" style={{ border: "1.5px solid rgba(200,255,0,0.2)", animation: "ring-spin-ccw 6s linear infinite" }} />
@@ -180,7 +180,7 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
             src={displayLogo}
             alt="شعار"
             style={{
-              height: "140px",
+              height: "190px",
               width: "auto",
               objectFit: "contain",
               position: "relative",
