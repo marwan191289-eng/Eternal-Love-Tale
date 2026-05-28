@@ -12,6 +12,8 @@ export default function MusicPlayer() {
   const [showVolume, setShowVolume] = useState(false);
   const [waitingForInteraction, setWaitingForInteraction] = useState(false);
   const triedAutoplay = useRef(false);
+  const pausedByVideoRef = useRef(false);
+  const activeVideosRef = useRef(0);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -66,6 +68,34 @@ export default function MusicPlayer() {
   }, [musicUrl]);
 
   useEffect(() => { triedAutoplay.current = false; }, [musicUrl]);
+
+  useEffect(() => {
+    const handleVideoPlay = () => {
+      const audio = audioRef.current;
+      activeVideosRef.current += 1;
+      if (audio && playing && !audio.paused) {
+        audio.pause();
+        pausedByVideoRef.current = true;
+        setPlaying(false);
+        setWaitingForInteraction(false);
+      }
+    };
+
+    const handleVideoStop = () => {
+      activeVideosRef.current = Math.max(0, activeVideosRef.current - 1);
+      if (activeVideosRef.current === 0 && pausedByVideoRef.current) {
+        pausedByVideoRef.current = false;
+        startPlay();
+      }
+    };
+
+    window.addEventListener("eternal-video-play", handleVideoPlay);
+    window.addEventListener("eternal-video-stop", handleVideoStop);
+    return () => {
+      window.removeEventListener("eternal-video-play", handleVideoPlay);
+      window.removeEventListener("eternal-video-stop", handleVideoStop);
+    };
+  }, [playing, startPlay]);
 
   const toggle = () => {
     const audio = audioRef.current;

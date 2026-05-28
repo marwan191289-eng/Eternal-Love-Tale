@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import NeonCard from "@/components/NeonCard";
 import SiteHeader from "@/components/SiteHeader";
@@ -130,8 +130,46 @@ function getYouTubeId(url: string): string | null {
   return null;
 }
 
+function notifyVideoPlay() {
+  window.dispatchEvent(new Event("eternal-video-play"));
+}
+
+function notifyVideoStop() {
+  window.dispatchEvent(new Event("eternal-video-stop"));
+}
+
 function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
   const ytId = getYouTubeId(video.url);
+  const [iframeActive, setIframeActive] = useState(false);
+  const htmlVideoPlayingRef = useRef(false);
+
+  const startIframeVideo = () => {
+    setIframeActive(true);
+    notifyVideoPlay();
+  };
+
+  const closeIframeVideo = () => {
+    setIframeActive(false);
+  };
+
+  const handleNativeVideoPlay = () => {
+    if (htmlVideoPlayingRef.current) return;
+    htmlVideoPlayingRef.current = true;
+    notifyVideoPlay();
+  };
+
+  const handleNativeVideoStop = () => {
+    if (!htmlVideoPlayingRef.current) return;
+    htmlVideoPlayingRef.current = false;
+    notifyVideoStop();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (iframeActive) notifyVideoStop();
+    };
+  }, [iframeActive]);
+
   return (
     <motion.div {...fadeUp(0.05)} className="rounded-2xl overflow-hidden" style={{
       background: `linear-gradient(135deg, ${accent}08 0%, ${accent}04 100%)`,
@@ -140,17 +178,57 @@ function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
     }}>
       {ytId ? (
         <div className="relative" style={{ paddingBottom: "56.25%" }}>
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src={`https://www.youtube.com/embed/${ytId}`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ border: "none" }}
-          />
+          {iframeActive ? (
+            <>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&enablejsapi=1`}
+                title={video.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ border: "none" }}
+              />
+              <button
+                onClick={closeIframeVideo}
+                className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-full text-xs font-bold"
+                style={{
+                  background: "rgba(5,3,15,0.86)",
+                  border: `1px solid ${accent}55`,
+                  color: accent,
+                  fontFamily: "'Cairo', sans-serif",
+                  boxShadow: `0 0 18px ${accent}22`,
+                  backdropFilter: "blur(14px)",
+                }}
+              >
+                إغلاق الفيديو
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={startIframeVideo}
+              className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3"
+              style={{
+                background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.72)), radial-gradient(circle at center, ${accent}24, transparent 62%)`,
+                color: accent,
+                fontFamily: "'Cairo', sans-serif",
+              }}
+            >
+              <span style={{ fontSize: "2.4rem", textShadow: `0 0 22px ${accent}AA` }}>▶</span>
+              <span className="text-sm font-bold" style={{ textShadow: `0 0 12px ${accent}88` }}>تشغيل الفيديو</span>
+              <span className="text-xs" style={{ color: `${accent}AA` }}>سيتم إيقاف موسيقى الخلفية مؤقتًا</span>
+            </button>
+          )}
         </div>
       ) : (
-        <video src={video.url} controls className="w-full" style={{ maxHeight: "340px", background: "#000" }} />
+        <video
+          src={video.url}
+          controls
+          className="w-full"
+          style={{ maxHeight: "340px", background: "#000" }}
+          onPlay={handleNativeVideoPlay}
+          onPause={handleNativeVideoStop}
+          onEnded={handleNativeVideoStop}
+        />
       )}
       {video.title && (
         <div className="px-4 py-3">
