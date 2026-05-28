@@ -419,7 +419,7 @@ export default function MainPage() {
             <NeonCard variant="cyan" className="mb-6">
               <h3 className="text-xl font-bold mb-6" style={{ color: "#00e5ff", textShadow: "0 0 16px #00e5ffaa", ...bodyFont, ...centeredText }}>
                 {lang === "ar"
-                  ? "هنا تبدأ حكاية — تكتبها الذكريات وترويها القلوب"
+                  ? "هنا تبدأ حكاية — تكتبها الذكريات — وترويها القلوب"
                   : "Here a Story Begins — Written by Memories, Told by Hearts"}
               </h3>
               <div style={{ ...bodyFont, fontSize: "1.05rem", lineHeight: "2.6", color: "#E0F7FA", ...centeredText }}>
@@ -429,7 +429,7 @@ export default function MainPage() {
                   </motion.p>
                 ))}
                 <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.7, duration: 0.8 }} className="mt-5 font-bold" style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.1rem", ...centeredText }}>
-                  {lang === "ar" ? "أنصيبُك ،، نورهِ وعظمتِه ،،،،،، أم قدرك ،، ظلمتِه وقسوتِه" : "Or your fate — its darkness and cruelty?"}
+                  {lang === "ar" ? "أنصيبُك ،، نورهِ وعظمتِه —  أم قدرك ،، ظلمتِه وقسوتِه" : "Or your fate — its darkness and cruelty?"}
                 </motion.p>
                 <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9, duration: 0.8 }} className="mt-3 italic" style={{ color: "#00e5ffaa", fontSize: "0.9rem", ...centeredText }}>
                   {lang === "ar" ? "من أعماق الروح" : "From the depths of the soul"}
