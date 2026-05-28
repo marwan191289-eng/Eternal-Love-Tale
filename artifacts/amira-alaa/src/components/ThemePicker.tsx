@@ -9,7 +9,7 @@ import {
 } from "@/store/appStore";
 
 export default function ThemePicker() {
-  const { lang, t } = useLang();
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const {
     themeMode, setThemeMode,
@@ -20,23 +20,24 @@ export default function ThemePicker() {
 
   const tabs = [
     { id: "default",  label: lang === "ar" ? "افتراضي" : "Default" },
-    { id: "text",     label: lang === "ar" ? "نص فقط" : "Text Only" },
-    { id: "bg",       label: lang === "ar" ? "خلفية فقط" : "BG Only" },
-    { id: "combined", label: lang === "ar" ? "مدمج" : "Combined" },
+    { id: "text",     label: lang === "ar" ? "نص فقط"  : "Text"    },
+    { id: "bg",       label: lang === "ar" ? "خلفية"   : "BG"      },
+    { id: "combined", label: lang === "ar" ? "مدمج"    : "Mixed"   },
   ] as const;
 
   return (
     <>
-      {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
         className="fixed bottom-24 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
         style={{
-          background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(218,112,214,0.12))",
-          border: "1px solid rgba(255,215,0,0.35)",
+          background: open
+            ? "linear-gradient(135deg, rgba(200,255,0,0.2), rgba(170,220,0,0.15))"
+            : "linear-gradient(135deg, rgba(200,255,0,0.1), rgba(255,215,0,0.08))",
+          border: open ? "1px solid rgba(200,255,0,0.55)" : "1px solid rgba(200,255,0,0.3)",
           boxShadow: open
-            ? "0 0 28px rgba(255,215,0,0.45), 0 0 60px rgba(255,215,0,0.15)"
-            : "0 0 16px rgba(255,215,0,0.2)",
+            ? "0 0 28px rgba(200,255,0,0.4), 0 0 60px rgba(200,255,0,0.12)"
+            : "0 0 16px rgba(200,255,0,0.15)",
           backdropFilter: "blur(12px)",
         }}
         title={lang === "ar" ? "تغيير الألوان" : "Color Themes"}
@@ -44,7 +45,6 @@ export default function ThemePicker() {
         <span style={{ fontSize: "1.3rem" }}>🎨</span>
       </button>
 
-      {/* Panel */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -52,23 +52,26 @@ export default function ThemePicker() {
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.85, x: -20 }}
             transition={{ duration: 0.25 }}
-            className="fixed bottom-40 left-4 z-50 w-72 rounded-2xl overflow-hidden"
+            className="fixed bottom-40 left-4 z-50 w-80 rounded-2xl overflow-hidden"
             style={{
-              background: "rgba(5,3,15,0.97)",
-              border: "1px solid rgba(255,215,0,0.2)",
-              boxShadow: "0 8px 48px rgba(0,0,0,0.8), 0 0 40px rgba(255,215,0,0.05)",
+              background: "rgba(3,5,0,0.98)",
+              border: "1px solid rgba(200,255,0,0.18)",
+              boxShadow: "0 8px 48px rgba(0,0,0,0.85), 0 0 40px rgba(200,255,0,0.04)",
               backdropFilter: "blur(24px)",
+              maxHeight: "80vh",
+              overflowY: "auto",
             }}
           >
             {/* Header */}
-            <div
-              className="px-4 py-3 flex items-center justify-between"
-              style={{ borderBottom: "1px solid rgba(255,215,0,0.1)" }}
-            >
-              <span
-                className="text-sm font-bold"
-                style={{ color: "#FFD700", fontFamily: "'Cairo', sans-serif", textShadow: "0 0 10px rgba(255,215,0,0.4)" }}
-              >
+            <div className="px-4 py-3 flex items-center justify-between sticky top-0 z-10" style={{
+              background: "rgba(3,5,0,0.98)",
+              borderBottom: "1px solid rgba(200,255,0,0.1)",
+            }}>
+              <span className="text-sm font-bold" style={{
+                color: "#C8FF00",
+                fontFamily: "'Cairo', sans-serif",
+                textShadow: "0 0 10px rgba(200,255,0,0.4)",
+              }}>
                 🎨 {lang === "ar" ? "تغيير الألوان" : "Color Themes"}
               </span>
               <button onClick={() => setOpen(false)} style={{ color: "rgba(255,255,255,0.3)", fontSize: "1rem" }}>✕</button>
@@ -83,17 +86,33 @@ export default function ThemePicker() {
                     onClick={() => setThemeMode(tab.id as typeof themeMode)}
                     className="py-1.5 px-1 rounded-lg text-xs transition-all duration-200"
                     style={{
-                      background: themeMode === tab.id ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.04)",
-                      border: themeMode === tab.id ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                      color: themeMode === tab.id ? "#FFD700" : "rgba(255,255,255,0.35)",
+                      background: themeMode === tab.id ? "rgba(200,255,0,0.14)" : "rgba(255,255,255,0.04)",
+                      border: themeMode === tab.id ? "1px solid rgba(200,255,0,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      color: themeMode === tab.id ? "#C8FF00" : "rgba(255,255,255,0.35)",
                       fontFamily: "'Cairo', sans-serif",
-                      textShadow: themeMode === tab.id ? "0 0 8px rgba(255,215,0,0.4)" : "none",
+                      textShadow: themeMode === tab.id ? "0 0 8px rgba(200,255,0,0.4)" : "none",
                     }}
                   >
                     {tab.label}
                   </button>
                 ))}
               </div>
+
+              {/* Default */}
+              {themeMode === "default" && (
+                <div className="py-4 text-center">
+                  <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{
+                    background: "linear-gradient(135deg, rgba(200,255,0,0.15), rgba(255,215,0,0.1))",
+                    border: "1px solid rgba(200,255,0,0.4)",
+                    boxShadow: "0 0 20px rgba(200,255,0,0.2)",
+                  }}>
+                    <span style={{ fontSize: "1.4rem" }}>🌟</span>
+                  </div>
+                  <p className="text-xs" style={{ color: "rgba(200,255,0,0.6)", fontFamily: "'Cairo', sans-serif" }}>
+                    {lang === "ar" ? "ثيم الذهب الكلاسيكي" : "Classic Gold Theme"}
+                  </p>
+                </div>
+              )}
 
               {/* Text palettes */}
               {themeMode === "text" && (
@@ -106,7 +125,7 @@ export default function ThemePicker() {
                       <button
                         key={p.id}
                         onClick={() => setSelectedTextPalette(p.id)}
-                        className="py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200"
+                        className="py-2 px-2 rounded-xl text-xs font-bold transition-all duration-200"
                         style={{
                           background: selectedTextPalette === p.id ? `${p.textColor}20` : "rgba(255,255,255,0.04)",
                           border: `1px solid ${selectedTextPalette === p.id ? p.textColor + "60" : "rgba(255,255,255,0.1)"}`,
@@ -136,21 +155,15 @@ export default function ThemePicker() {
                         onClick={() => setSelectedBgPalette(p.id)}
                         className="py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-3"
                         style={{
-                          background: selectedBgPalette === p.id ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.03)",
-                          border: `1px solid ${selectedBgPalette === p.id ? "rgba(255,215,0,0.35)" : "rgba(255,255,255,0.08)"}`,
-                          color: selectedBgPalette === p.id ? "#FFD700" : "rgba(255,255,255,0.45)",
+                          background: selectedBgPalette === p.id ? "rgba(200,255,0,0.07)" : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${selectedBgPalette === p.id ? "rgba(200,255,0,0.35)" : "rgba(255,255,255,0.08)"}`,
+                          color: selectedBgPalette === p.id ? "#C8FF00" : "rgba(255,255,255,0.45)",
                           fontFamily: "'Cairo', sans-serif",
                         }}
                       >
-                        {/* Preview swatch */}
-                        <span
-                          className="w-6 h-6 rounded-lg flex-shrink-0"
-                          style={{ background: p.value, border: "1px solid rgba(255,255,255,0.1)" }}
-                        />
+                        <span className="w-6 h-6 rounded-lg flex-shrink-0" style={{ background: p.value, border: "1px solid rgba(255,255,255,0.1)" }} />
                         {lang === "ar" ? p.name : p.nameEn}
-                        {selectedBgPalette === p.id && (
-                          <span className="mr-auto" style={{ color: "#FFD700" }}>✓</span>
-                        )}
+                        {selectedBgPalette === p.id && <span className="mr-auto" style={{ color: "#C8FF00" }}>✓</span>}
                       </button>
                     ))}
                   </div>
@@ -168,7 +181,7 @@ export default function ThemePicker() {
                       <button
                         key={theme.id}
                         onClick={() => setSelectedCombinedTheme(theme.id)}
-                        className="py-3 px-3 rounded-xl text-xs font-bold transition-all duration-200"
+                        className="py-3 px-3 rounded-xl text-xs font-bold transition-all duration-200 relative"
                         style={{
                           background: selectedCombinedTheme === theme.id ? `${theme.textColor}18` : "rgba(255,255,255,0.03)",
                           border: `1px solid ${selectedCombinedTheme === theme.id ? theme.textColor + "55" : "rgba(255,255,255,0.1)"}`,
@@ -177,24 +190,15 @@ export default function ThemePicker() {
                           boxShadow: selectedCombinedTheme === theme.id ? `0 0 16px ${theme.textColor}15` : "none",
                         }}
                       >
-                        <div
-                          className="w-full h-1.5 rounded-full mb-2 mx-auto"
-                          style={{ background: theme.textColor, opacity: 0.6 }}
-                        />
+                        <div className="w-full h-1.5 rounded-full mb-2 mx-auto" style={{ background: theme.textColor, opacity: 0.6 }} />
                         {lang === "ar" ? theme.name : theme.nameEn}
+                        {selectedCombinedTheme === theme.id && (
+                          <span className="absolute top-1.5 left-1.5 text-[10px]" style={{ color: theme.textColor }}>✓</span>
+                        )}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {themeMode === "default" && (
-                <p
-                  className="text-xs text-center py-4"
-                  style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif" }}
-                >
-                  {lang === "ar" ? "الثيم الافتراضي — الذهبي الكلاسيكي" : "Default theme — Classic Gold"}
-                </p>
               )}
             </div>
           </motion.div>

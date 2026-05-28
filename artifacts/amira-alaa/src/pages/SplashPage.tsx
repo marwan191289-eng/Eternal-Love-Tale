@@ -22,7 +22,10 @@ function TypewriterNames() {
     if (idx < fullText.length) {
       const t = setTimeout(() => { setDisplayed(fullText.slice(0, idx + 1)); setIdx((i) => i + 1); }, 110);
       return () => clearTimeout(t);
-    } else { setDone(true); }
+    } else {
+      setDone(true);
+      return undefined;
+    }
   }, [idx, fullText]);
 
   return (

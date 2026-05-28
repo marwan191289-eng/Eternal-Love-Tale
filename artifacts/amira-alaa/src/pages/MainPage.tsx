@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import NeonCard from "@/components/NeonCard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -6,13 +7,12 @@ import DevCard from "@/components/DevCard";
 import ThemePicker from "@/components/ThemePicker";
 import VerticalImageStrips from "@/components/VerticalImageStrips";
 import MusicPlayer from "@/components/MusicPlayer";
-import { useAppStore, TEXT_PALETTES, BG_PALETTES, COMBINED_THEMES } from "@/store/appStore";
+import { useAppStore, TEXT_PALETTES, BG_PALETTES, COMBINED_THEMES, VideoItem } from "@/store/appStore";
 import { useLang } from "@/context/LangContext";
 
 function useThemeStyles() {
   const { themeMode, selectedTextPalette, selectedBgPalette, selectedCombinedTheme } = useAppStore();
   const defaultBg = "radial-gradient(ellipse at center, #0d0b1e 0%, #05030f 60%, #000008 100%)";
-
   if (themeMode === "default") return { bg: defaultBg, accent: "#FFD700" };
   if (themeMode === "text") {
     const p = TEXT_PALETTES.find((x) => x.id === selectedTextPalette) ?? TEXT_PALETTES[0];
@@ -54,18 +54,184 @@ function fadeUp(delay = 0) {
   };
 }
 
-const centeredText: React.CSSProperties = {
-  textAlign: "center",
-  textAlignLast: "center",
-};
+const centeredText: React.CSSProperties = { textAlign: "center", textAlignLast: "center" };
+const justifyText: React.CSSProperties = { textAlign: "justify", textAlignLast: "center" };
 
-const justifyText: React.CSSProperties = {
-  textAlign: "justify",
-  textAlignLast: "center",
-};
+function getYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
+  const ytId = video.type === "youtube" || getYouTubeId(video.url) ? getYouTubeId(video.url) : null;
+
+  return (
+    <motion.div {...fadeUp(0.05)} className="rounded-2xl overflow-hidden" style={{
+      background: `linear-gradient(135deg, ${accent}08 0%, ${accent}04 100%)`,
+      border: `1px solid ${accent}30`,
+      boxShadow: `0 0 20px ${accent}08`,
+    }}>
+      {ytId ? (
+        <div className="relative" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src={`https://www.youtube.com/embed/${ytId}`}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ border: "none" }}
+          />
+        </div>
+      ) : (
+        <video
+          src={video.url}
+          controls
+          className="w-full"
+          style={{ maxHeight: "340px", background: "#000" }}
+        />
+      )}
+      {video.title && (
+        <div className="px-4 py-3">
+          <p className="text-sm font-semibold text-center" style={{
+            color: accent,
+            fontFamily: "'Cairo', sans-serif",
+            textShadow: `0 0 10px ${accent}66`,
+          }}>
+            {video.title}
+          </p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function GalleryGrid({ accent }: { accent: string }) {
+  const { images } = useAppStore();
+  const { lang } = useLang();
+  const visibleImages = images.filter((img) => img.visible);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightboxAlt, setLightboxAlt] = useState("");
+
+  if (visibleImages.length === 0) return null;
+
+  return (
+    <>
+      <div className="columns-2 md:columns-3 gap-3 space-y-3">
+        {visibleImages.map((img, i) => (
+          <motion.div
+            key={img.id}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, delay: i * 0.04 }}
+            className="break-inside-avoid cursor-pointer rounded-xl overflow-hidden group"
+            onClick={() => { setLightbox(img.url); setLightboxAlt(img.alt); }}
+            style={{
+              border: `1px solid ${accent}22`,
+              boxShadow: `0 4px 16px rgba(0,0,0,0.4)`,
+              transition: "transform 0.3s, box-shadow 0.3s",
+            }}
+            whileHover={{ scale: 1.02, boxShadow: `0 8px 32px ${accent}20, 0 0 0 1px ${accent}30` }}
+          >
+            <img
+              src={img.url}
+              alt={img.alt}
+              className="w-full object-cover"
+              style={{ display: "block" }}
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <div className="px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `linear-gradient(to top, ${accent}15, transparent)` }}>
+              <p className="text-xs text-center" style={{ color: accent, fontFamily: "'Cairo', sans-serif" }}>{img.alt}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.94)", backdropFilter: "blur(20px)" }}
+            onClick={() => setLightbox(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative max-w-4xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={lightbox}
+                alt={lightboxAlt}
+                className="w-full h-auto rounded-2xl"
+                style={{
+                  maxHeight: "85vh",
+                  objectFit: "contain",
+                  boxShadow: `0 0 60px ${accent}30, 0 0 120px ${accent}10`,
+                  border: `1px solid ${accent}30`,
+                }}
+              />
+              {lightboxAlt && (
+                <p className="text-center mt-3 text-sm" style={{ color: accent, fontFamily: "'Cairo', sans-serif" }}>
+                  {lightboxAlt}
+                </p>
+              )}
+              <button
+                onClick={() => setLightbox(null)}
+                className="absolute -top-4 -right-4 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"
+                style={{
+                  background: "rgba(5,3,15,0.95)",
+                  border: `1px solid ${accent}40`,
+                  color: accent,
+                  boxShadow: `0 0 16px ${accent}20`,
+                }}
+              >
+                ✕
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="text-center mt-6">
+        <a
+          href="/admin"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+          style={{
+            background: `linear-gradient(135deg, ${accent}15, ${accent}08)`,
+            border: `1px solid ${accent}35`,
+            color: accent,
+            fontFamily: "'Cairo', sans-serif",
+            boxShadow: `0 0 16px ${accent}10`,
+            textShadow: `0 0 8px ${accent}60`,
+          }}
+        >
+          <span>📸</span>
+          {lang === "ar" ? "إضافة صور أو فيديوهات" : "Add Photos or Videos"}
+        </a>
+      </div>
+    </>
+  );
+}
 
 export default function MainPage() {
-  const { marwanVisible, saraVisible, customCards } = useAppStore();
+  const { marwanVisible, saraVisible, customCards, videos } = useAppStore();
   const { lang, dir } = useLang();
   const { bg, accent } = useThemeStyles();
 
@@ -126,27 +292,25 @@ export default function MainPage() {
       ];
 
   const variantTextColor: Record<string, string> = {
-    gold: "#FFF8DC",
-    cyan: "#E0F7FA",
-    rose: "#FCE4EC",
-    purple: "#F3E5F5",
+    gold: "#FFF8DC", cyan: "#E0F7FA", rose: "#FCE4EC", purple: "#F3E5F5",
   };
 
+  const visibleVideos = videos.filter((v) => v.visible);
+
   return (
-    <div className="min-h-screen text-[#E7C6C6]" style={{ background: bg, direction: dir }}>
+    <div className="min-h-screen" style={{ background: bg, direction: dir }}>
       <VerticalImageStrips />
       <ThemePicker />
       <MusicPlayer />
       <SiteHeader />
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at 10% 20%, rgba(255,215,0,0.025) 0%, transparent 50%), " +
-            "radial-gradient(ellipse at 90% 80%, rgba(0,229,255,0.025) 0%, transparent 50%)",
-          zIndex: 0,
-        }}
-      />
+
+      <div className="fixed inset-0 pointer-events-none" style={{
+        background:
+          "radial-gradient(ellipse at 10% 20%, rgba(200,255,0,0.015) 0%, transparent 50%), " +
+          "radial-gradient(ellipse at 90% 80%, rgba(0,229,255,0.015) 0%, transparent 50%)",
+        zIndex: 0,
+      }} />
+
       <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-24 pb-8">
 
         {/* HERO */}
@@ -159,56 +323,60 @@ export default function MainPage() {
               className="text-center py-16 mb-4"
             >
               <div className="relative inline-block mb-6">
-                <div
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ boxShadow: `0 0 80px ${accent}22, 0 0 160px ${accent}0a` }}
-                />
-                <h1
-                  style={{
-                    fontFamily: "'Amiri', serif",
-                    fontSize: "clamp(2.8rem, 10vw, 6rem)",
-                    fontWeight: 700,
-                    background: `linear-gradient(90deg, ${accent}aa 0%, ${accent} 30%, #fff8 50%, ${accent} 70%, ${accent}aa 100%)`,
-                    backgroundSize: "200% auto",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                    animation: "shimmer-text 4s linear infinite, float-gentle 5s ease-in-out infinite",
-                    letterSpacing: lang === "ar" ? "0" : "0.04em",
-                  }}
-                >
+                <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: `0 0 80px ${accent}22, 0 0 160px ${accent}0a` }} />
+                <h1 style={{
+                  fontFamily: "'Amiri', serif",
+                  fontSize: "clamp(2.8rem, 10vw, 6rem)",
+                  fontWeight: 700,
+                  background: `linear-gradient(90deg, ${accent}aa 0%, ${accent} 30%, #fff8 50%, ${accent} 70%, ${accent}aa 100%)`,
+                  backgroundSize: "200% auto",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  animation: "shimmer-text 4s linear infinite, float-gentle 5s ease-in-out infinite",
+                  letterSpacing: lang === "ar" ? "0" : "0.04em",
+                }}>
                   {lang === "ar" ? "أميرة & علاء" : "Amira & Alaa"}
                 </h1>
               </div>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                className="text-lg tracking-widest mb-2"
-                style={{
-                  color: "#da70d6",
-                  textShadow: "0 0 16px #da70d688",
-                  fontFamily: "'Cairo', sans-serif",
-                  letterSpacing: "0.2em",
-                  textAlign: "center",
-                }}
-              >
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }} className="text-lg tracking-widest mb-2" style={{
+                color: accent, opacity: 0.8,
+                textShadow: `0 0 16px ${accent}88`,
+                fontFamily: "'Cairo', sans-serif", letterSpacing: "0.2em", textAlign: "center",
+              }}>
                 {lang === "ar" ? "✦ ١٤ مايو ٢٠٢٦ ✦" : "✦ May 14, 2026 ✦"}
               </motion.p>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.8 }}
-                className="text-sm tracking-[0.25em]"
-                style={{ color: "#00e5ff55", fontFamily: "'Cairo', sans-serif", textAlign: "center" }}
-              >
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.8 }} className="text-sm tracking-[0.25em]" style={{ color: `${accent}55`, fontFamily: "'Cairo', sans-serif", textAlign: "center" }}>
                 Celebration — احتفال
               </motion.p>
             </motion.div>
           </div>
         </SectionWrapper>
+
+        {/* GALLERY */}
+        <SectionWrapper id="gallery">
+          <div id="gallery-section">
+            <motion.div {...fadeUp()}>
+              <div className="mb-4 text-center">
+                <h2 className="text-2xl font-bold mb-2" style={{
+                  ...bodyFont, color: accent,
+                  textShadow: `0 0 20px ${accent}88`,
+                  ...centeredText,
+                }}>
+                  {lang === "ar" ? "📸 معرض الصور" : "📸 Photo Gallery"}
+                </h2>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif", fontSize: "0.85rem" }}>
+                  {lang === "ar" ? "✦ لحظات لا تُنسى ✦" : "✦ Unforgettable moments ✦"}
+                </p>
+              </div>
+              <GalleryGrid accent={accent} />
+            </motion.div>
+          </div>
+        </SectionWrapper>
+
+        <Divider />
 
         {/* CELEBRATION */}
         <SectionWrapper id="celebration">
@@ -216,28 +384,18 @@ export default function MainPage() {
             <motion.div {...fadeUp()}>
               <NeonCard variant="gold" className="mb-6">
                 <div style={{ ...centeredText, marginBottom: "1.25rem" }}>
-                  <span
-                    className="text-lg font-bold tracking-widest"
-                    style={{
-                      color: accent,
-                      textShadow: `0 0 20px ${accent}aa, 0 0 40px ${accent}55`,
-                      fontFamily: "'Cairo', sans-serif",
-                      letterSpacing: "0.2em",
-                    }}
-                  >
+                  <span className="text-lg font-bold tracking-widest" style={{
+                    color: accent,
+                    textShadow: `0 0 20px ${accent}aa, 0 0 40px ${accent}55`,
+                    fontFamily: "'Cairo', sans-serif", letterSpacing: "0.2em",
+                  }}>
                     ✦ Celebration ✦
                   </span>
                 </div>
-                <h2
-                  className="text-2xl font-bold mb-5"
-                  style={{ ...bodyFont, color: accent, textShadow: `0 0 16px ${accent}aa`, ...centeredText }}
-                >
+                <h2 className="text-2xl font-bold mb-5" style={{ ...bodyFont, color: accent, textShadow: `0 0 16px ${accent}aa`, ...centeredText }}>
                   {lang === "ar" ? "احتفالٌ بالأميرة أميرة" : "A Celebration for Princess Amira"}
                 </h2>
-                <p
-                  className="text-base md:text-lg"
-                  style={{ ...bodyFont, color: "#F5E6C8", lineHeight: "2.5", ...justifyText }}
-                >
+                <p className="text-base md:text-lg" style={{ ...bodyFont, color: "#F5E6C8", lineHeight: "2.5", ...justifyText }}>
                   {lang === "ar"
                     ? "في هذا اليوم المبارك، نجتمع — ولو من بعيد — لنحتفي بكِ يا أميرة، وبشريك عمركِ علاء. هذا الموقع هديّة من القلب: مرجعٌ تعودين إليه دائماً لترَيْ كم أنتِ محبوبة، وكم كانت لحظات يومكِ ساحرة."
                     : "On this blessed day, we gather — even from afar — to celebrate you, dear Amira, and your life partner Alaa. This website is a heartfelt gift: a place you can always return to and see how deeply you are loved, and how magical your special day truly was."}
@@ -251,47 +409,21 @@ export default function MainPage() {
         <SectionWrapper id="poetry1">
           <motion.div {...fadeUp()}>
             <NeonCard variant="cyan" className="mb-6">
-              <h3
-                className="text-xl font-bold mb-6"
-                style={{ color: "#00e5ff", textShadow: "0 0 16px #00e5ffaa", ...bodyFont, ...centeredText }}
-              >
+              <h3 className="text-xl font-bold mb-6" style={{ color: "#00e5ff", textShadow: "0 0 16px #00e5ffaa", ...bodyFont, ...centeredText }}>
                 {lang === "ar"
                   ? "هنا تبدأ حكاية — تكتبها الذكريات وترويها القلوب"
                   : "Here a Story Begins — Written by Memories, Told by Hearts"}
               </h3>
               <div style={{ ...bodyFont, fontSize: "1.05rem", lineHeight: "2.6", color: "#E0F7FA", ...centeredText }}>
                 {poetryLines.map((line, i) => (
-                  <motion.p
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.06, duration: 0.5 }}
-                    style={{ marginBottom: "0.15rem" }}
-                    className="text-[#E7C6C6]">
+                  <motion.p key={i} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.5 }} style={{ marginBottom: "0.15rem" }}>
                     {line}
                   </motion.p>
                 ))}
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.7, duration: 0.8 }}
-                  className="mt-5 font-bold"
-                  style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.1rem", ...centeredText }}
-                >
-                  {lang === "ar"
-                    ? "أم قدرك ظلمته وقسوته"
-                    : "Or your fate — its darkness and cruelty?"}
+                <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.7, duration: 0.8 }} className="mt-5 font-bold" style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.1rem", ...centeredText }}>
+                  {lang === "ar" ? "أم قدرك ظلمته وقسوته" : "Or your fate — its darkness and cruelty?"}
                 </motion.p>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.9, duration: 0.8 }}
-                  className="mt-3 italic"
-                  style={{ color: "#00e5ffaa", fontSize: "0.9rem", ...centeredText }}
-                >
+                <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9, duration: 0.8 }} className="mt-3 italic" style={{ color: "#00e5ffaa", fontSize: "0.9rem", ...centeredText }}>
                   {lang === "ar" ? "من أعماق الروح" : "From the depths of the soul"}
                 </motion.p>
               </div>
@@ -305,14 +437,7 @@ export default function MainPage() {
             <NeonCard variant="purple" className="mb-6">
               <div style={{ ...bodyFont, fontSize: "1.05rem", lineHeight: "2.6", color: "#F3E5F5", ...justifyText }}>
                 {philosophy1Lines.map((line, i) => (
-                  <motion.p
-                    key={i}
-                    initial={{ opacity: 0, y: 6 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05, duration: 0.5 }}
-                    style={{ marginBottom: "0.3rem" }}
-                  >
+                  <motion.p key={i} initial={{ opacity: 0, y: 6 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.5 }} style={{ marginBottom: "0.3rem" }}>
                     {line}
                   </motion.p>
                 ))}
@@ -330,17 +455,12 @@ export default function MainPage() {
                   {lang === "ar" ? "يٌقال أن الرجال نوعان" : "It is said that men are of two kinds"}
                 </p>
                 <p className="font-bold mb-3" style={{ color: "#fff", fontSize: "1.15rem", ...centeredText }}>
-                  {lang === "ar"
-                    ? '"رجلُ يحيى بقلبه وآخر يٌحيي قلبه"'
-                    : '"A man who lives by his heart, and another who gives life to his heart"'}
+                  {lang === "ar" ? '"رجلُ يحيى بقلبه وآخر يٌحيي قلبه"' : '"A man who lives by his heart, and another who gives life to his heart"'}
                 </p>
                 <p className="mb-4" style={{ color: "#ff80ab88", ...centeredText }}>
                   {lang === "ar" ? "وكذا" : "And likewise"}
                 </p>
-                <p
-                  className="font-bold"
-                  style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.05rem", ...centeredText }}
-                >
+                <p className="font-bold" style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.05rem", ...centeredText }}>
                   {lang === "ar"
                     ? '"أن أعتى الرجال وأخطرهم قتلتهم قلوبهم ،،، وأضعفهم أحيتهم قلوبهم"'
                     : '"The fiercest and most dangerous of men were slain by their hearts… and the weakest were given life by theirs"'}
@@ -352,24 +472,40 @@ export default function MainPage() {
 
         <Divider />
 
+        {/* VIDEOS */}
+        <SectionWrapper id="videos">
+          {visibleVideos.length > 0 && (
+            <div className="mb-8">
+              <motion.div {...fadeUp()} className="text-center mb-6">
+                <h2 className="text-2xl font-bold mb-2" style={{
+                  ...bodyFont, color: accent,
+                  textShadow: `0 0 20px ${accent}88`,
+                  ...centeredText,
+                }}>
+                  {lang === "ar" ? "🎬 معرض الفيديوهات" : "🎬 Video Gallery"}
+                </h2>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif", fontSize: "0.85rem" }}>
+                  {lang === "ar" ? "✦ ذكريات متحركة ✦" : "✦ Moving memories ✦"}
+                </p>
+              </motion.div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {visibleVideos.map((v) => (
+                  <VideoCard key={v.id} video={v} accent={accent} />
+                ))}
+              </div>
+              <Divider />
+            </div>
+          )}
+        </SectionWrapper>
+
         {/* MESSAGES HEADER */}
         <SectionWrapper id="messages">
           <motion.div {...fadeUp()} className="text-center mb-10" id="messages-section">
-            <h2
-              className="text-3xl font-bold mb-3"
-              style={{
-                ...bodyFont,
-                color: accent,
-                textShadow: `0 0 24px ${accent}aa, 0 0 48px ${accent}55`,
-                ...centeredText,
-              }}
-            >
+            <h2 className="text-3xl font-bold mb-3" style={{ ...bodyFont, color: accent, textShadow: `0 0 24px ${accent}aa, 0 0 48px ${accent}55`, ...centeredText }}>
               {lang === "ar" ? "رسائل من القلب" : "Messages From The Heart"}
             </h2>
             <p style={{ color: "rgba(255,255,255,0.35)", fontFamily: "'Cairo', sans-serif", ...centeredText }}>
-              {lang === "ar"
-                ? "✦ كلمات تُحفر في الذاكرة وتبقى في القلب ✦"
-                : "✦ Words carved in memory, forever in the heart ✦"}
+              {lang === "ar" ? "✦ كلمات تُحفر في الذاكرة وتبقى في القلب ✦" : "✦ Words carved in memory, forever in the heart ✦"}
             </p>
           </motion.div>
         </SectionWrapper>
@@ -379,10 +515,7 @@ export default function MainPage() {
           <SectionWrapper id="marwan-card">
             <NeonCard variant="purple" className="mb-6" delay={0.1}>
               <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: "#F3E5F5" }}>
-                <h4
-                  className="text-xl font-bold mb-4"
-                  style={{ color: "#e040fb", textShadow: "0 0 12px #e040fb88", ...centeredText }}
-                >
+                <h4 className="text-xl font-bold mb-4" style={{ color: "#e040fb", textShadow: "0 0 12px #e040fb88", ...centeredText }}>
                   ✉︎ {lang === "ar" ? "رسالة مروان" : "Marwan's Letter"}
                 </h4>
                 {lang === "en" && (
@@ -394,17 +527,13 @@ export default function MainPage() {
                   إلى أختي وحبيبتي العروسة، أرقى وأجمل أميرة نجم
                 </p>
                 <div style={{ ...justifyText }}>
-                  <p className="mb-3">
-                    عايزك بس تكوني متأكدة أني والله ما منعني عن حضور غير العذر القهري، الخارج عن الإرادة المنفردة، بس أكيد في يوم من الأيام هنتقابل وهقدر أشرحلك الموقف كامل.
-                  </p>
+                  <p className="mb-3">عايزك بس تكوني متأكدة أني والله ما منعني عن حضور غير العذر القهري، الخارج عن الإرادة المنفردة، بس أكيد في يوم من الأيام هنتقابل وهقدر أشرحلك الموقف كامل.</p>
                   <p className="mb-3">سامحيني يا حبيبتي.</p>
                   <p className="mb-3">وسلامي لعلاء زوجك.</p>
                   <p className="mb-3">أترككم في رعاية الله وحفظه.</p>
                   <p className="mb-4">ألف مبروك يا أميرة، وربنا يسعدك ويبارك في عمرك.</p>
                   <p style={{ color: "#ce93d8", ...centeredText }}>مع أطيب التمنيات،</p>
-                  <p className="font-bold mt-1" style={{ color: "#e040fb", textShadow: "0 0 8px #e040fb66", ...centeredText }}>
-                    — مروان نجم
-                  </p>
+                  <p className="font-bold mt-1" style={{ color: "#e040fb", textShadow: "0 0 8px #e040fb66", ...centeredText }}>— مروان نجم</p>
                 </div>
               </div>
             </NeonCard>
@@ -416,28 +545,43 @@ export default function MainPage() {
           <SectionWrapper id="sara-card">
             <NeonCard variant="cyan" className="mb-6" delay={0.15}>
               <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: "#E0F7FA" }}>
-                <h4
-                  className="text-xl font-bold mb-4"
-                  style={{ color: "#00e5ff", textShadow: "0 0 12px #00e5ff88", ...centeredText }}
-                >
+                <h4 className="text-xl font-bold mb-4" style={{ color: "#00e5ff", textShadow: "0 0 12px #00e5ff88", ...centeredText }}>
                   ✉︎ {lang === "ar" ? "تهنئة سارة وحمزة" : "Sara & Hamza's Congratulations"}
                 </h4>
-                <p className="mb-3" style={{ color: "#80deea", ...centeredText }}>
-                  {lang === "ar" ? "إلى العروسين الغاليين أميرة وعلاء" : "To our dearest couple Amira & Alaa"}
-                </p>
-                <div style={{ ...justifyText }}>
-                  <p className="mb-3">
-                    {lang === "ar"
-                      ? "ألف مبروك لكم على هذا الزواج المبارك. تمنياتنا لكم بحياة مليئة بالحب والسعادة والبركة. يا رب تكون حياتهم مليانة خير وفرح دايم."
-                      : "A thousand congratulations on this blessed union. We wish you a life filled with love, happiness, and blessings. May your life together always be full of joy."}
-                  </p>
-                  <p style={{ color: "#80deea", ...centeredText }}>
-                    {lang === "ar" ? "بالتهاني والأمنيات،" : "With congratulations and best wishes,"}
-                  </p>
-                  <p className="font-bold mt-1" style={{ color: "#00e5ff", textShadow: "0 0 8px #00e5ff66", ...centeredText }}>
-                    — {lang === "ar" ? "سارة وحمزة" : "Sara & Hamza"}
-                  </p>
-                </div>
+                {lang === "en" ? (
+                  <div style={{ ...justifyText }}>
+                    <p className="mb-3" style={{ color: "#80deea", ...centeredText }}>To the dearest couple Amira & Alaa</p>
+                    <p className="mb-3">A thousand congratulations! Wishing you happiness and success in every moment of your life ahead.</p>
+                    <p className="mb-3">Until we meet again, my dear. I speak on behalf of myself and Hamza — he's still too young to talk.</p>
+                    <p className="mb-4">Marwan always tells me I'm a copy of you. I tell him: No… she's much more beautiful, honestly. But seeing the videos and photos, I thought — maybe one day I'll look like you, and that would be the greatest stroke of luck in my life.</p>
+                    <p className="mb-3">We love you very much.</p>
+                    <p className="mb-3" style={{ color: "#80deea", ...centeredText }}>— Sara & Hamza 🤍</p>
+                  </div>
+                ) : (
+                  <div style={{ ...justifyText }}>
+                    <p className="mb-3" style={{ color: "#80deea", ...centeredText }}>إلى العزيزين أميرة وعلاء</p>
+                    <p className="mb-3 font-bold" style={{ color: "#00e5ff", ...centeredText }}>مبروك يا الأميرة عمتو! 🎉</p>
+                    <p className="mb-3">أتمنالك السعادة والتوفيق في كل لحظات حياتك الجاية.</p>
+                    <p className="mb-3">السلام لحين اللقاء يا حبيبة قلبي أنا وحمزة.</p>
+                    <p className="mb-3">أنا بتكلم بلساني وبلسان حمزة علشان هو لسه صغير ومبيعرفش يتكلم.</p>
+                    <p className="mb-4 text-sm" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif", textAlign: "center" }}>— — —</p>
+                    <p className="mb-3">مروان دايمًا يقولي إني نسخة منك، وأنا بقوله: لأ… هي أجمل كتير بصراحة.</p>
+                    <p className="mb-3">بس لما شفت الفيديوهات والصور حسّيت إن فعلاً ممكن أكون في يوم من الأيام شبهِك، وده أكيد هيكون أكبر ضربة حظ ليا في حياتي… إني أكون حتى في نص جمالك يا الأميرة أميرة.</p>
+                    <p className="mb-4 text-sm" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif", textAlign: "center" }}>— — —</p>
+                    <p className="mb-2">بحبك أوي يا عمتو،</p>
+                    <p className="mb-3">وحمزة بيقولك: <span style={{ color: "#00e5ff" }}>"ها اه اه"</span> — أكيد يقصد إنه بيحبك هو كمان.</p>
+                    <p className="mb-4">مين يشوفك وما يحبكيش يا عمتو؟ 🤍</p>
+                    <div className="text-sm rounded-xl p-3 mb-4" style={{ background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.12)", fontFamily: "'Cairo', sans-serif" }}>
+                      <p className="font-bold mb-1" style={{ color: "rgba(0,229,255,0.7)" }}>(ملحوظة):</p>
+                      <p className="mb-1">متستغربيش إني بناديه باسمه… إحنا أصحاب.</p>
+                      <p>أنا بقوله "يا بابا" بس لما بيكون زعلان مني، لأننا ساعتها مبنبقاش صحاب.</p>
+                    </div>
+                    <p className="mb-2">السلام لحين اللقاء.</p>
+                    <p className="mb-3">باي باي يا الأميرة عمتو أميرة. 👋</p>
+                    <p className="mb-1" style={{ color: "#80deea", ...centeredText }}>بحبك جدًا… وحمزة كمان بيحبك جدًا.</p>
+                    <p className="font-bold mt-2" style={{ color: "#00e5ff", textShadow: "0 0 8px #00e5ff66", ...centeredText }}>— سارة وحمزة 🤍</p>
+                  </div>
+                )}
               </div>
             </NeonCard>
           </SectionWrapper>
@@ -449,10 +593,7 @@ export default function MainPage() {
             <NeonCard variant={card.variant} className="mb-6">
               <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: variantTextColor[card.variant] }}>
                 {(lang === "ar" ? card.titleAr : card.titleEn) && (
-                  <h4
-                    className="text-xl font-bold mb-4"
-                    style={{ ...centeredText }}
-                  >
+                  <h4 className="text-xl font-bold mb-4" style={{ ...centeredText }}>
                     {lang === "ar" ? card.titleAr : card.titleEn}
                   </h4>
                 )}
@@ -465,7 +606,6 @@ export default function MainPage() {
         ))}
 
         <Divider />
-
         <DevCard />
         <SiteFooter />
       </div>
