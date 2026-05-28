@@ -14,6 +14,7 @@ export default function MusicPlayer() {
   const triedAutoplay = useRef(false);
   const pausedByVideoRef = useRef(false);
   const activeVideosRef = useRef(0);
+  const resumeAfterVideoTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -70,10 +71,18 @@ export default function MusicPlayer() {
   useEffect(() => { triedAutoplay.current = false; }, [musicUrl]);
 
   useEffect(() => {
+    const clearResumeTimer = () => {
+      if (resumeAfterVideoTimerRef.current !== null) {
+        window.clearTimeout(resumeAfterVideoTimerRef.current);
+        resumeAfterVideoTimerRef.current = null;
+      }
+    };
+
     const handleVideoPlay = () => {
       const audio = audioRef.current;
+      clearResumeTimer();
       activeVideosRef.current += 1;
-      if (audio && playing && !audio.paused) {
+      if (audio && !audio.paused) {
         audio.pause();
         pausedByVideoRef.current = true;
         setPlaying(false);
@@ -84,23 +93,30 @@ export default function MusicPlayer() {
     const handleVideoStop = () => {
       activeVideosRef.current = Math.max(0, activeVideosRef.current - 1);
       if (activeVideosRef.current === 0 && pausedByVideoRef.current) {
-        pausedByVideoRef.current = false;
-        startPlay();
+        clearResumeTimer();
+        resumeAfterVideoTimerRef.current = window.setTimeout(() => {
+          resumeAfterVideoTimerRef.current = null;
+          if (activeVideosRef.current === 0 && pausedByVideoRef.current) {
+            pausedByVideoRef.current = false;
+            startPlay();
+          }
+        }, 2000);
       }
     };
 
     window.addEventListener("eternal-video-play", handleVideoPlay);
     window.addEventListener("eternal-video-stop", handleVideoStop);
     return () => {
+      clearResumeTimer();
       window.removeEventListener("eternal-video-play", handleVideoPlay);
       window.removeEventListener("eternal-video-stop", handleVideoStop);
     };
-  }, [playing, startPlay]);
+  }, [startPlay]);
 
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (playing) { audio.pause(); setPlaying(false); setWaitingForInteraction(false); }
+    if (playing) { audio.pause(); setPlaying(false); setWaitingForInteraction(false); pausedByVideoRef.current = false; }
     else startPlay();
   };
 

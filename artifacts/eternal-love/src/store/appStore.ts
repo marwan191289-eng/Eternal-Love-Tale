@@ -15,11 +15,27 @@ export interface ImageItem {
   visible: boolean;
 }
 
+export type VideoSourceType =
+  | "youtube"
+  | "vimeo"
+  | "google-drive"
+  | "dropbox"
+  | "onedrive"
+  | "tiktok"
+  | "instagram"
+  | "facebook"
+  | "dailymotion"
+  | "twitch"
+  | "direct"
+  | "motion"
+  | "link"
+  | "file";
+
 export interface VideoItem {
   id: string;
   url: string;
   title: string;
-  type: "youtube" | "link" | "file";
+  type: VideoSourceType;
   visible: boolean;
 }
 
@@ -198,7 +214,11 @@ function settingsPatch(rows: { key: string; value: unknown }[]) {
 const toImageRow = (img: ImageItem, position: number) => ({ id: img.id, url: img.url, alt: img.alt, visible: img.visible, position });
 const fromImageRow = (row: any): ImageItem => ({ id: row.id, url: row.url, alt: row.alt ?? "", visible: Boolean(row.visible) });
 const toVideoRow = (video: VideoItem, position: number) => ({ id: video.id, url: video.url, title: video.title, type: video.type, visible: video.visible, position });
-const fromVideoRow = (row: any): VideoItem => ({ id: row.id, url: row.url, title: row.title ?? "", type: row.type, visible: Boolean(row.visible) });
+const normalizeVideoType = (type: string): VideoSourceType => {
+  const allowed: VideoSourceType[] = ["youtube", "vimeo", "google-drive", "dropbox", "onedrive", "tiktok", "instagram", "facebook", "dailymotion", "twitch", "direct", "motion", "link", "file"];
+  return allowed.includes(type as VideoSourceType) ? (type as VideoSourceType) : "link";
+};
+const fromVideoRow = (row: any): VideoItem => ({ id: row.id, url: row.url, title: row.title ?? "", type: normalizeVideoType(row.type), visible: Boolean(row.visible) });
 const toCardRow = (card: CustomCard, position: number) => ({ id: card.id, variant: card.variant, title_ar: card.titleAr, title_en: card.titleEn, content_ar: card.contentAr, content_en: card.contentEn, visible: card.visible, position });
 const fromCardRow = (row: any): CustomCard => ({ id: row.id, variant: row.variant, titleAr: row.title_ar ?? "", titleEn: row.title_en ?? "", contentAr: row.content_ar ?? "", contentEn: row.content_en ?? "", visible: Boolean(row.visible) });
 const toSectionRow = (section: Section, position: number) => ({ id: section.id, label: section.label, visible: section.visible, position });

@@ -117,7 +117,7 @@ function DaysSinceCounter({ accent }: { accent: string }) {
   );
 }
 
-/* ── YouTube helper ── */
+/* ── Multi-provider video helper ── */
 function getYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
@@ -130,6 +130,41 @@ function getYouTubeId(url: string): string | null {
   return null;
 }
 
+function getVimeoId(url: string): string | null {
+  return url.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1] ?? null;
+}
+
+function getDriveId(url: string): string | null {
+  return url.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1] ?? url.match(/[?&]id=([^&]+)/)?.[1] ?? null;
+}
+
+function getDailymotionId(url: string): string | null {
+  return url.match(/dailymotion\.com\/video\/([^_?&/]+)/)?.[1] ?? url.match(/dai\.ly\/([^_?&/]+)/)?.[1] ?? null;
+}
+
+function isNativeVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) || url.includes("supabase.co/storage/");
+}
+
+function getVideoPresentation(video: VideoItem): { mode: "iframe" | "native" | "external"; src: string; label: string } {
+  const url = video.url;
+  const yt = getYouTubeId(url);
+  if (yt) return { mode: "iframe", src: `https://www.youtube.com/embed/${yt}?autoplay=1&rel=0&enablejsapi=1`, label: "YouTube" };
+
+  const vimeo = getVimeoId(url);
+  if (vimeo) return { mode: "iframe", src: `https://player.vimeo.com/video/${vimeo}?autoplay=1&title=0&byline=0&portrait=0`, label: "Vimeo" };
+
+  const drive = getDriveId(url);
+  if (drive) return { mode: "iframe", src: `https://drive.google.com/file/d/${drive}/preview`, label: "Google Drive" };
+
+  const daily = getDailymotionId(url);
+  if (daily) return { mode: "iframe", src: `https://www.dailymotion.com/embed/video/${daily}?autoplay=1`, label: "Dailymotion" };
+
+  if (video.type === "file" || video.type === "direct" || isNativeVideoUrl(url)) return { mode: "native", src: url, label: "Video" };
+
+  return { mode: "external", src: url, label: "رابط خارجي" };
+}
+
 function notifyVideoPlay() {
   window.dispatchEvent(new Event("eternal-video-play"));
 }
@@ -139,106 +174,98 @@ function notifyVideoStop() {
 }
 
 function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
-  const ytId = getYouTubeId(video.url);
+  const presentation = getVideoPresentation(video);
   const [iframeActive, setIframeActive] = useState(false);
-  const htmlVideoPlayingRef = useRef(false);
+  const iframeSoundLockedRef = useRef(false);
+  const nativeVideoPlayingRef = useRef(false);
 
-  const startIframeVideo = () => {
-    setIframeActive(true);
+  const startVideoAudioLock = () => {
+    if (iframeSoundLockedRef.current) return;
+    iframeSoundLockedRef.current = true;
     notifyVideoPlay();
   };
 
+  const stopVideoAudioLock = () => {
+    if (!iframeSoundLockedRef.current) return;
+    iframeSoundLockedRef.current = false;
+    notifyVideoStop();
+  };
+
+  const startIframeVideo = () => {
+    setIframeActive(true);
+    startVideoAudioLock();
+  };
+
   const closeIframeVideo = () => {
+    stopVideoAudioLock();
     setIframeActive(false);
   };
 
   const handleNativeVideoPlay = () => {
-    if (htmlVideoPlayingRef.current) return;
-    htmlVideoPlayingRef.current = true;
+    if (nativeVideoPlayingRef.current) return;
+    nativeVideoPlayingRef.current = true;
     notifyVideoPlay();
   };
 
   const handleNativeVideoStop = () => {
-    if (!htmlVideoPlayingRef.current) return;
-    htmlVideoPlayingRef.current = false;
+    if (!nativeVideoPlayingRef.current) return;
+    nativeVideoPlayingRef.current = false;
     notifyVideoStop();
   };
 
   useEffect(() => {
+    if (!iframeActive) return;
+    const handleProviderMessage = (event: MessageEvent) => {
+      const raw = event.data;
+      let payload: any = raw;
+      if (typeof raw === "string") {
+        try { payload = JSON.parse(raw); } catch { return; }
+      }
+      const state = payload?.info?.playerState ?? payload?.playerState;
+      if (state === 1) startVideoAudioLock();
+      if (state === 0 || state === 2) stopVideoAudioLock();
+      if (state === 0) setIframeActive(false);
+    };
+    window.addEventListener("message", handleProviderMessage);
     return () => {
-      if (iframeActive) notifyVideoStop();
+      window.removeEventListener("message", handleProviderMessage);
+      stopVideoAudioLock();
     };
   }, [iframeActive]);
 
   return (
-    <motion.div {...fadeUp(0.05)} className="rounded-2xl overflow-hidden" style={{
-      background: `linear-gradient(135deg, ${accent}08 0%, ${accent}04 100%)`,
-      border: `1px solid ${accent}30`,
-      boxShadow: `0 0 20px ${accent}08`,
+    <motion.div {...fadeUp(0.05)} className="rounded-2xl overflow-hidden luxury-sheen" style={{
+      background: `linear-gradient(135deg, ${accent}10 0%, ${accent}05 100%)`,
+      border: `1px solid ${accent}38`,
+      boxShadow: `0 12px 34px rgba(0,0,0,0.35), 0 0 24px ${accent}12`,
     }}>
-      {ytId ? (
+      {presentation.mode === "iframe" ? (
         <div className="relative" style={{ paddingBottom: "56.25%" }}>
           {iframeActive ? (
             <>
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&enablejsapi=1`}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ border: "none" }}
-              />
-              <button
-                onClick={closeIframeVideo}
-                className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-full text-xs font-bold"
-                style={{
-                  background: "rgba(5,3,15,0.86)",
-                  border: `1px solid ${accent}55`,
-                  color: accent,
-                  fontFamily: "'Cairo', sans-serif",
-                  boxShadow: `0 0 18px ${accent}22`,
-                  backdropFilter: "blur(14px)",
-                }}
-              >
-                إغلاق الفيديو
-              </button>
+              <iframe className="absolute inset-0 w-full h-full" src={presentation.src} title={video.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ border: "none" }} />
+              <button onClick={closeIframeVideo} className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "rgba(5,3,15,0.86)", border: `1px solid ${accent}55`, color: accent, fontFamily: "'Cairo', sans-serif", boxShadow: `0 0 18px ${accent}22`, backdropFilter: "blur(14px)" }}>إغلاق الفيديو</button>
             </>
           ) : (
-            <button
-              onClick={startIframeVideo}
-              className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3"
-              style={{
-                background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.72)), radial-gradient(circle at center, ${accent}24, transparent 62%)`,
-                color: accent,
-                fontFamily: "'Cairo', sans-serif",
-              }}
-            >
+            <button onClick={startIframeVideo} className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3" style={{ background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.72)), radial-gradient(circle at center, ${accent}24, transparent 62%)`, color: accent, fontFamily: "'Cairo', sans-serif" }}>
               <span style={{ fontSize: "2.4rem", textShadow: `0 0 22px ${accent}AA` }}>▶</span>
               <span className="text-sm font-bold" style={{ textShadow: `0 0 12px ${accent}88` }}>تشغيل الفيديو</span>
-              <span className="text-xs" style={{ color: `${accent}AA` }}>سيتم إيقاف موسيقى الخلفية مؤقتًا</span>
+              <span className="text-xs" style={{ color: `${accent}AA` }}>سيتم إيقاف موسيقى الخلفية مؤقتًا ثم إعادتها بعد ثانيتين من الإيقاف</span>
             </button>
           )}
         </div>
+      ) : presentation.mode === "native" ? (
+        <video src={presentation.src} controls className="w-full" style={{ maxHeight: "340px", background: "#000" }} onPlay={handleNativeVideoPlay} onPause={handleNativeVideoStop} onEnded={handleNativeVideoStop} />
       ) : (
-        <video
-          src={video.url}
-          controls
-          className="w-full"
-          style={{ maxHeight: "340px", background: "#000" }}
-          onPlay={handleNativeVideoPlay}
-          onPause={handleNativeVideoStop}
-          onEnded={handleNativeVideoStop}
-        />
+        <a href={presentation.src} target="_blank" rel="noreferrer" onClick={notifyVideoPlay} className="min-h-[220px] flex flex-col items-center justify-center gap-3" style={{ background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.74))`, color: accent, fontFamily: "'Cairo', sans-serif" }}>
+          <span style={{ fontSize: "2.2rem" }}>🔗</span>
+          <span className="font-bold">فتح الفيديو من المصدر</span>
+          <span className="text-xs opacity-70">هذه المنصة قد تمنع التضمين داخل الموقع</span>
+        </a>
       )}
       {video.title && (
         <div className="px-4 py-3">
-          <p className="text-sm font-semibold text-center" style={{
-            color: accent,
-            fontFamily: "'Cairo', sans-serif",
-            textShadow: `0 0 10px ${accent}66`,
-          }}>
-            {video.title}
-          </p>
+          <p className="text-sm font-semibold text-center" style={{ color: accent, fontFamily: "'Cairo', sans-serif", textShadow: `0 0 10px ${accent}66` }}>{video.title}</p>
         </div>
       )}
     </motion.div>

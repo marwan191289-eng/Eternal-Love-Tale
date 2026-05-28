@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAppStore, CustomCard, VideoItem } from "@/store/appStore";
+import { useAppStore, CustomCard, VideoItem, VideoSourceType } from "@/store/appStore";
 import { LOGO_IMG } from "@/data/defaultAssets";
 import { uploadMediaFile } from "@/lib/supabaseClient";
 
@@ -23,6 +23,54 @@ const VARIANTS = [
   { id: "rose",   label: "وردي",    color: "#ff80ab" },
   { id: "purple", label: "بنفسجي",  color: "#e040fb" },
 ] as const;
+
+
+type ImageLinkSource = {
+  id: string;
+  label: string;
+  icon: string;
+  hint: string;
+  placeholder: string;
+};
+
+const IMAGE_LINK_SOURCES: ImageLinkSource[] = [
+  { id: "direct", label: "رابط مباشر", icon: "🖼️", hint: "JPG / PNG / WebP / GIF", placeholder: "https://example.com/photo.jpg" },
+  { id: "google-drive", label: "Google Drive", icon: "🟢", hint: "رابط مشاركة للصورة", placeholder: "https://drive.google.com/file/d/.../view" },
+  { id: "dropbox", label: "Dropbox", icon: "📦", hint: "رابط Dropbox للصورة", placeholder: "https://www.dropbox.com/s/.../photo.jpg" },
+  { id: "onedrive", label: "OneDrive", icon: "☁️", hint: "رابط مشاركة عام", placeholder: "https://1drv.ms/i/s!..." },
+  { id: "icloud", label: "iCloud", icon: "🍏", hint: "رابط مشاركة عام", placeholder: "https://www.icloud.com/sharedalbum/..." },
+  { id: "imgur", label: "Imgur", icon: "🌌", hint: "رابط صورة أو ألبوم", placeholder: "https://i.imgur.com/image.jpg" },
+  { id: "postimages", label: "Postimages", icon: "📮", hint: "رابط مباشر للصورة", placeholder: "https://i.postimg.cc/.../photo.jpg" },
+  { id: "cloudinary", label: "Cloudinary", icon: "☁️", hint: "رابط CDN للصورة", placeholder: "https://res.cloudinary.com/.../image/upload/..." },
+  { id: "instagram", label: "Instagram", icon: "📷", hint: "رابط بوست؛ الأفضل رابط صورة مباشر", placeholder: "https://www.instagram.com/p/..." },
+  { id: "facebook", label: "Facebook", icon: "📘", hint: "رابط صورة عام", placeholder: "https://www.facebook.com/photo/?fbid=..." },
+  { id: "pinterest", label: "Pinterest", icon: "📌", hint: "رابط pin أو صورة", placeholder: "https://www.pinterest.com/pin/..." },
+  { id: "unsplash", label: "Unsplash", icon: "🌄", hint: "رابط صورة عالي الجودة", placeholder: "https://images.unsplash.com/..." },
+];
+
+type VideoLinkSource = {
+  id: VideoSourceType;
+  label: string;
+  icon: string;
+  hint: string;
+  placeholder: string;
+};
+
+const VIDEO_LINK_SOURCES: VideoLinkSource[] = [
+  { id: "youtube", label: "YouTube", icon: "▶️", hint: "فيديو عادي أو Shorts", placeholder: "https://youtube.com/watch?v=..." },
+  { id: "vimeo", label: "Vimeo", icon: "🎞️", hint: "روابط Vimeo الاحترافية", placeholder: "https://vimeo.com/123456789" },
+  { id: "google-drive", label: "Google Drive", icon: "🟢", hint: "رابط ملف فيديو قابل للمشاركة", placeholder: "https://drive.google.com/file/d/.../view" },
+  { id: "dropbox", label: "Dropbox", icon: "📦", hint: "رابط Dropbox مباشر أو مشاركة", placeholder: "https://www.dropbox.com/s/.../video.mp4" },
+  { id: "onedrive", label: "OneDrive", icon: "☁️", hint: "رابط مشاركة عام", placeholder: "https://1drv.ms/v/s!..." },
+  { id: "direct", label: "MP4 مباشر", icon: "🎬", hint: "mp4 / webm / mov", placeholder: "https://example.com/video.mp4" },
+  { id: "dailymotion", label: "Dailymotion", icon: "💠", hint: "روابط Dailymotion", placeholder: "https://www.dailymotion.com/video/..." },
+  { id: "twitch", label: "Twitch", icon: "🟣", hint: "Clip أو Video", placeholder: "https://www.twitch.tv/videos/..." },
+  { id: "facebook", label: "Facebook", icon: "📘", hint: "رابط فيديو عام", placeholder: "https://www.facebook.com/watch/?v=..." },
+  { id: "instagram", label: "Instagram", icon: "📷", hint: "Reel أو Post", placeholder: "https://www.instagram.com/reel/..." },
+  { id: "tiktok", label: "TikTok", icon: "🎵", hint: "رابط TikTok عام", placeholder: "https://www.tiktok.com/@user/video/..." },
+  { id: "motion", label: "Motion / Canva", icon: "✨", hint: "رابط موشن أو تصميم متحرك", placeholder: "https://www.canva.com/design/..." },
+  { id: "link", label: "رابط عام", icon: "🔗", hint: "أي رابط فيديو أو صفحة عرض", placeholder: "https://example.com/video" },
+];
 
 export default function AdminPage() {
   const {
@@ -235,15 +283,26 @@ function Card({ children, color = "lime" }: { children: React.ReactNode; color?:
     purple: { bg: "rgba(224,64,251,0.04)",  border: "rgba(224,64,251,0.18)", title: "#e040fb" },
   }[color];
   return (
-    <div className="rounded-2xl p-6" style={{ background: colors.bg, border: `1px solid ${colors.border}`, boxShadow: "0 0 30px rgba(0,0,0,0.4)" }}>
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="premium-glass luxury-sheen rounded-3xl p-6"
+      style={{
+        background: `linear-gradient(145deg, ${colors.bg}, rgba(3,5,0,0.78)), radial-gradient(ellipse at 12% 0%, ${colors.border}, transparent 48%)`,
+        border: `1px solid ${colors.border}`,
+        boxShadow: `0 22px 70px rgba(0,0,0,0.48), 0 0 34px ${colors.border}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+      }}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
 function CardTitle({ children, color = "#C8FF00" }: { children: React.ReactNode; color?: string }) {
   return (
-    <h2 className="text-lg font-bold mb-5" style={{ color, fontFamily: "'Cairo', sans-serif", textShadow: `0 0 10px ${color}55` }}>
+    <h2 className="text-xl font-black mb-5 flex items-center gap-2" style={{ color, fontFamily: "'Cairo', sans-serif", textShadow: `0 0 16px ${color}88, 0 0 34px ${color}33` }}>
+      <span className="inline-block w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 14px ${color}` }} />
       {children}
     </h2>
   );
@@ -260,12 +319,13 @@ function Input({ value, onChange, placeholder, dir = "rtl", type = "text" }: {
       placeholder={placeholder}
       className="w-full px-3 py-2 rounded-lg"
       style={{
-        background: "rgba(255,255,255,0.05)",
-        border: "1px solid rgba(255,255,255,0.12)",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035))",
+        border: "1px solid rgba(200,255,0,0.16)",
         color: "#fff",
         outline: "none",
         fontFamily: "'Cairo', sans-serif",
         direction: dir as "rtl" | "ltr",
+        boxShadow: "inset 0 0 18px rgba(0,0,0,0.25), 0 0 14px rgba(200,255,0,0.035)",
       }}
     />
   );
@@ -285,8 +345,8 @@ function Btn({ onClick, children, variant = "lime", disabled }: {
     <button
       onClick={onClick}
       disabled={disabled}
-      className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 hover:brightness-125 disabled:opacity-40"
-      style={{ background: styles.bg, border: `1px solid ${styles.border}`, color: styles.color, fontFamily: "'Cairo', sans-serif" }}
+      className="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 hover:brightness-125 disabled:opacity-40"
+      style={{ background: `linear-gradient(135deg, ${styles.bg}, rgba(255,255,255,0.035))`, border: `1px solid ${styles.border}`, color: styles.color, fontFamily: "'Cairo', sans-serif", boxShadow: `0 0 16px ${styles.border}, inset 0 1px 0 rgba(255,255,255,0.06)` }}
     >
       {children}
     </button>
@@ -383,15 +443,16 @@ function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
 }) {
   const [url, setUrl] = useState("");
   const [alt, setAlt] = useState("");
+  const [selectedSource, setSelectedSource] = useState(IMAGE_LINK_SOURCES[0]);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [activeAdd, setActiveAdd] = useState<"link" | "file" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function handleAddByLink() {
     if (!url.trim()) return;
-    addImage({ url: url.trim(), alt: alt.trim() || "صورة" });
+    addImage({ url: url.trim(), alt: alt.trim() || `${selectedSource.label} — صورة` });
     setUrl(""); setAlt(""); setActiveAdd(null);
-    showSaved("تمت إضافة الصورة ✓");
+    showSaved(`تمت إضافة الصورة من ${selectedSource.label} ✓`);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -415,11 +476,11 @@ function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
 
   return (
     <Card color="cyan">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
         <CardTitle color="#00e5ff">🖼️ إدارة صور المعرض ({images.length})</CardTitle>
-        <div className="flex gap-2">
-          <Btn onClick={() => setActiveAdd(activeAdd === "link" ? null : "link")} variant="cyan">🔗 رابط</Btn>
-          <Btn onClick={() => { setActiveAdd(null); fileRef.current?.click(); }} variant="lime">📁 رفع ملف</Btn>
+        <div className="flex gap-2 flex-wrap">
+          <Btn onClick={() => setActiveAdd(activeAdd === "link" ? null : "link")} variant="cyan">🔗 روابط ومنصات</Btn>
+          <Btn onClick={() => { setActiveAdd(null); fileRef.current?.click(); }} variant="lime">📁 رفع ملف إلى Supabase</Btn>
         </div>
       </div>
 
@@ -428,12 +489,30 @@ function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
       <AnimatePresence>
         {activeAdd === "link" && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            className="mb-5 p-4 rounded-xl space-y-3" style={{ background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.14)" }}>
-            <p className="text-sm font-semibold" style={{ color: "#00e5ff", fontFamily: "'Cairo', sans-serif" }}>إضافة صورة برابط</p>
-            <Input value={url} onChange={setUrl} placeholder="https://example.com/image.jpg" dir="ltr" />
+            className="mb-5 p-4 rounded-2xl space-y-4" style={{ background: "linear-gradient(135deg, rgba(0,229,255,0.055), rgba(200,255,0,0.025))", border: "1px solid rgba(0,229,255,0.18)", boxShadow: "0 0 28px rgba(0,229,255,0.06)" }}>
+            <div>
+              <p className="text-sm font-semibold mb-1" style={{ color: "#00e5ff", fontFamily: "'Cairo', sans-serif" }}>إضافة صورة من رابط أو منصة</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.38)", fontFamily: "'Cairo', sans-serif" }}>اختر المصدر لتسهيل التنظيم. لو المنصة لا تعرض الصورة مباشرة، استخدم رابط الصورة المباشر أو ارفع الملف إلى Supabase.</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {IMAGE_LINK_SOURCES.map((src) => (
+                <button key={src.id} onClick={() => { setSelectedSource(src); setUrl(""); }} className="p-2.5 rounded-xl text-start transition-all"
+                  style={{
+                    background: selectedSource.id === src.id ? "rgba(0,229,255,0.14)" : "rgba(255,255,255,0.035)",
+                    border: selectedSource.id === src.id ? "1px solid rgba(0,229,255,0.45)" : "1px solid rgba(255,255,255,0.08)",
+                    color: selectedSource.id === src.id ? "#00e5ff" : "rgba(255,255,255,0.62)",
+                    fontFamily: "'Cairo', sans-serif",
+                  }}>
+                  <span className="block text-lg">{src.icon}</span>
+                  <span className="block text-xs font-bold">{src.label}</span>
+                  <span className="block text-[10px] opacity-60">{src.hint}</span>
+                </button>
+              ))}
+            </div>
+            <Input value={url} onChange={setUrl} placeholder={selectedSource.placeholder} dir="ltr" />
             <Input value={alt} onChange={setAlt} placeholder="وصف الصورة (اختياري)" />
-            <div className="flex gap-2">
-              <Btn onClick={handleAddByLink} variant="cyan" disabled={!url.trim()}>+ إضافة</Btn>
+            <div className="flex gap-2 flex-wrap">
+              <Btn onClick={handleAddByLink} variant="cyan" disabled={!url.trim()}>+ إضافة من {selectedSource.label}</Btn>
               <Btn onClick={() => setActiveAdd(null)} variant="danger">إلغاء</Btn>
             </div>
           </motion.div>
@@ -443,35 +522,18 @@ function GalleryTab({ images, toggleImage, addImage, removeImage, showSaved }: {
       <div className="grid grid-cols-1 gap-3">
         {images.map((img) => (
           <div key={img.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <img
-              src={img.url}
-              alt={img.alt}
-              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-              style={{ opacity: img.visible ? 0.9 : 0.3, border: img.visible ? "1px solid rgba(200,255,0,0.2)" : "1px solid rgba(255,100,100,0.2)" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.15"; }}
-            />
+            <img src={img.url} alt={img.alt} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" style={{ opacity: img.visible ? 0.9 : 0.3, border: img.visible ? "1px solid rgba(200,255,0,0.2)" : "1px solid rgba(255,100,100,0.2)" }} onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.15"; }} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{img.alt}</p>
-              <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>
-                {img.url.startsWith("data:") ? "📁 ملف محلي" : img.url.slice(0, 55) + (img.url.length > 55 ? "…" : "")}
-              </p>
+              <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>{img.url.startsWith("data:") ? "📁 ملف محلي" : img.url.slice(0, 55) + (img.url.length > 55 ? "…" : "")}</p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
               <ToggleBtn value={img.visible} onToggle={() => toggleImage(img.id)} />
-              {confirmDel === img.id ? (
-                <>
-                  <Btn onClick={() => { removeImage(img.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn>
-                  <Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn>
-                </>
-              ) : (
-                <Btn onClick={() => setConfirmDel(img.id)} variant="danger">حذف</Btn>
-              )}
+              {confirmDel === img.id ? (<><Btn onClick={() => { removeImage(img.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn><Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn></>) : (<Btn onClick={() => setConfirmDel(img.id)} variant="danger">حذف</Btn>)}
             </div>
           </div>
         ))}
-        {images.length === 0 && (
-          <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif" }}>لا توجد صور</p>
-        )}
+        {images.length === 0 && <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif" }}>لا توجد صور</p>}
       </div>
     </Card>
   );
@@ -486,7 +548,7 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
   updateVideo: (id: string, updates: Partial<VideoItem>) => void;
   showSaved: (msg?: string) => void;
 }) {
-  const [addType, setAddType] = useState<"youtube" | "link" | "file">("youtube");
+  const [addType, setAddType] = useState<VideoSourceType>("youtube");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -495,11 +557,17 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
   const [editTitle, setEditTitle] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const selectedVideoSource = VIDEO_LINK_SOURCES.find((src) => src.id === addType) ?? VIDEO_LINK_SOURCES[0];
+  const typeLabels = Object.fromEntries(VIDEO_LINK_SOURCES.map((src) => [src.id, src.label])) as Record<VideoSourceType, string>;
+  typeLabels.file = "ملف Supabase";
+  const typeIcons = Object.fromEntries(VIDEO_LINK_SOURCES.map((src) => [src.id, src.icon])) as Record<VideoSourceType, string>;
+  typeIcons.file = "📁";
+
   function handleAdd() {
     if (!url.trim()) return;
-    addVideo({ url: url.trim(), title: title.trim() || "فيديو", type: addType });
+    addVideo({ url: url.trim(), title: title.trim() || `${selectedVideoSource.label} — فيديو`, type: addType });
     setUrl(""); setTitle(""); setShowAdd(false);
-    showSaved("تمت إضافة الفيديو ✓");
+    showSaved(`تمت إضافة الفيديو من ${selectedVideoSource.label} ✓`);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -520,15 +588,13 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
     }
   }
 
-  const typeLabels = { youtube: "يوتيوب", link: "رابط مباشر", file: "ملف" };
-
   return (
     <Card color="rose">
-      <div className="flex items-center justify-between mb-5">
-        <CardTitle color="#ff80ab">🎬 إدارة الفيديوهات ({videos.length})</CardTitle>
-        <div className="flex gap-2">
-          <Btn onClick={() => setShowAdd(!showAdd)} variant="rose">{showAdd ? "✕ إغلاق" : "+ إضافة فيديو"}</Btn>
-          <Btn onClick={() => fileRef.current?.click()} variant="lime">📁 رفع ملف</Btn>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+        <CardTitle color="#ff80ab">🎬 إدارة نبض الحكاية ({videos.length})</CardTitle>
+        <div className="flex gap-2 flex-wrap">
+          <Btn onClick={() => setShowAdd(!showAdd)} variant="rose">{showAdd ? "✕ إغلاق" : "+ إضافة فيديو برابط"}</Btn>
+          <Btn onClick={() => fileRef.current?.click()} variant="lime">📁 رفع ملف إلى Supabase</Btn>
         </div>
       </div>
 
@@ -537,34 +603,30 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
       <AnimatePresence>
         {showAdd && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            className="mb-5 p-4 rounded-xl space-y-3" style={{ background: "rgba(255,128,171,0.04)", border: "1px solid rgba(255,128,171,0.18)" }}>
-            <p className="text-sm font-semibold" style={{ color: "#ff80ab", fontFamily: "'Cairo', sans-serif" }}>إضافة فيديو</p>
-
-            {/* Type selector */}
-            <div className="flex gap-2">
-              {(["youtube", "link"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setAddType(t)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            className="mb-5 p-4 rounded-2xl space-y-4" style={{ background: "linear-gradient(135deg, rgba(255,128,171,0.06), rgba(224,64,251,0.025))", border: "1px solid rgba(255,128,171,0.20)", boxShadow: "0 0 30px rgba(255,128,171,0.065)" }}>
+            <div>
+              <p className="text-sm font-semibold mb-1" style={{ color: "#ff80ab", fontFamily: "'Cairo', sans-serif" }}>إضافة فيديو من منصة أو رابط</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.38)", fontFamily: "'Cairo', sans-serif" }}>يدعم أكثر من 10 اختيارات. المنصات التي تمنع التضمين ستظهر كرابط تشغيل خارجي، والملفات المباشرة تعمل داخل الموقع.</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {VIDEO_LINK_SOURCES.map((src) => (
+                <button key={src.id} onClick={() => { setAddType(src.id); setUrl(""); }} className="p-2.5 rounded-xl text-start transition-all"
                   style={{
-                    background: addType === t ? "rgba(255,128,171,0.2)" : "rgba(255,255,255,0.04)",
-                    border: addType === t ? "1px solid rgba(255,128,171,0.5)" : "1px solid rgba(255,255,255,0.1)",
-                    color: addType === t ? "#ff80ab" : "rgba(255,255,255,0.4)",
+                    background: addType === src.id ? "rgba(255,128,171,0.15)" : "rgba(255,255,255,0.035)",
+                    border: addType === src.id ? "1px solid rgba(255,128,171,0.48)" : "1px solid rgba(255,255,255,0.08)",
+                    color: addType === src.id ? "#ff80ab" : "rgba(255,255,255,0.62)",
                     fontFamily: "'Cairo', sans-serif",
-                  }}
-                >
-                  {typeLabels[t]}
+                  }}>
+                  <span className="block text-lg">{src.icon}</span>
+                  <span className="block text-xs font-bold">{src.label}</span>
+                  <span className="block text-[10px] opacity-60">{src.hint}</span>
                 </button>
               ))}
             </div>
-
-            <Input value={url} onChange={setUrl}
-              placeholder={addType === "youtube" ? "https://youtube.com/watch?v=..." : "https://example.com/video.mp4"}
-              dir="ltr" />
+            <Input value={url} onChange={setUrl} placeholder={selectedVideoSource.placeholder} dir="ltr" />
             <Input value={title} onChange={setTitle} placeholder="عنوان الفيديو (اختياري)" />
-            <div className="flex gap-2">
-              <Btn onClick={handleAdd} variant="rose" disabled={!url.trim()}>+ إضافة</Btn>
+            <div className="flex gap-2 flex-wrap">
+              <Btn onClick={handleAdd} variant="rose" disabled={!url.trim()}>+ إضافة من {selectedVideoSource.label}</Btn>
               <Btn onClick={() => setShowAdd(false)} variant="danger">إلغاء</Btn>
             </div>
           </motion.div>
@@ -576,51 +638,30 @@ function VideosTab({ videos, addVideo, removeVideo, toggleVideo, updateVideo, sh
           <div key={v.id} className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
             {editId === v.id ? (
               <div className="p-3 flex gap-2">
-                <div className="flex-1">
-                  <Input value={editTitle} onChange={setEditTitle} placeholder="عنوان الفيديو" />
-                </div>
+                <div className="flex-1"><Input value={editTitle} onChange={setEditTitle} placeholder="عنوان الفيديو" /></div>
                 <Btn onClick={() => { updateVideo(v.id, { title: editTitle }); setEditId(null); showSaved(); }} variant="cyan">✓ حفظ</Btn>
                 <Btn onClick={() => setEditId(null)} variant="danger">إلغاء</Btn>
               </div>
             ) : (
               <div className="flex items-center gap-3 p-3.5">
-                <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{v.type === "youtube" ? "▶️" : v.type === "file" ? "📁" : "🔗"}</span>
+                <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{typeIcons[v.type] ?? "🔗"}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>{v.title}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{
-                      background: "rgba(255,128,171,0.12)",
-                      color: "#ff80ab",
-                      fontFamily: "'Cairo', sans-serif",
-                    }}>
-                      {typeLabels[v.type]}
-                    </span>
-                    <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>
-                      {v.url.startsWith("blob:") ? "ملف محلي" : v.url.slice(0, 45) + (v.url.length > 45 ? "…" : "")}
-                    </p>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,128,171,0.12)", color: "#ff80ab", fontFamily: "'Cairo', sans-serif" }}>{typeLabels[v.type] ?? "رابط"}</span>
+                    <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.25)", direction: "ltr" }}>{v.url.startsWith("blob:") ? "ملف محلي" : v.url.slice(0, 45) + (v.url.length > 45 ? "…" : "")}</p>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <ToggleBtn value={v.visible} onToggle={() => toggleVideo(v.id)} />
                   <Btn onClick={() => { setEditId(v.id); setEditTitle(v.title); }} variant="gold">تعديل</Btn>
-                  {confirmDel === v.id ? (
-                    <>
-                      <Btn onClick={() => { removeVideo(v.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn>
-                      <Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn>
-                    </>
-                  ) : (
-                    <Btn onClick={() => setConfirmDel(v.id)} variant="danger">حذف</Btn>
-                  )}
+                  {confirmDel === v.id ? (<><Btn onClick={() => { removeVideo(v.id); setConfirmDel(null); showSaved("تم الحذف ✓"); }} variant="danger">تأكيد</Btn><Btn onClick={() => setConfirmDel(null)}>إلغاء</Btn></>) : (<Btn onClick={() => setConfirmDel(v.id)} variant="danger">حذف</Btn>)}
                 </div>
               </div>
             )}
           </div>
         ))}
-        {videos.length === 0 && (
-          <div className="text-center py-10" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif" }}>
-            لا توجد فيديوهات — اضغط "+ إضافة فيديو" أو "رفع ملف" لإضافة أول فيديو
-          </div>
-        )}
+        {videos.length === 0 && <div className="text-center py-10" style={{ color: "rgba(255,255,255,0.25)", fontFamily: "'Cairo', sans-serif" }}>لا توجد فيديوهات — أضف رابط منصة أو ارفع ملف إلى Supabase</div>}
       </div>
     </Card>
   );
