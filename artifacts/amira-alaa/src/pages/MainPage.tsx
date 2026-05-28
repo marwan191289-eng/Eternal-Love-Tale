@@ -133,12 +133,11 @@ export default function MainPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: bg, direction: dir }}>
+    <div className="min-h-screen text-[#E7C6C6]" style={{ background: bg, direction: dir }}>
       <VerticalImageStrips />
       <ThemePicker />
       <MusicPlayer />
       <SiteHeader />
-
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
@@ -148,7 +147,6 @@ export default function MainPage() {
           zIndex: 0,
         }}
       />
-
       <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-24 pb-8">
 
         {/* HERO */}
@@ -270,7 +268,7 @@ export default function MainPage() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.06, duration: 0.5 }}
                     style={{ marginBottom: "0.15rem" }}
-                  >
+                    className="text-[#E7C6C6]">
                     {line}
                   </motion.p>
                 ))}
