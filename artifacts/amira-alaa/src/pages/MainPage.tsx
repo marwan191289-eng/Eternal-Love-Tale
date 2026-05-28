@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import NeonCard from "@/components/NeonCard";
 import SiteHeader from "@/components/SiteHeader";
@@ -57,6 +57,66 @@ function fadeUp(delay = 0) {
 const centeredText: React.CSSProperties = { textAlign: "center", textAlignLast: "center" };
 const justifyText: React.CSSProperties = { textAlign: "justify", textAlignLast: "center" };
 
+/* ── Days-since counter ── */
+function DaysSinceCounter({ accent }: { accent: string }) {
+  const { lang } = useLang();
+  const WEDDING_DATE = new Date("2026-05-14T00:00:00");
+
+  function getDays() {
+    const now = new Date();
+    const diff = now.getTime() - WEDDING_DATE.getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  const [days, setDays] = useState(getDays);
+
+  useEffect(() => {
+    const t = setInterval(() => setDays(getDays()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const label = lang === "ar"
+    ? `يوم من يوم الاحتفال 💛`
+    : `days since the celebration 💛`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.9 }}
+      className="flex flex-col items-center gap-2 my-6"
+    >
+      <div className="flex items-baseline gap-3">
+        <span
+          style={{
+            fontFamily: "'Amiri', serif",
+            fontSize: "clamp(3.5rem, 12vw, 6rem)",
+            fontWeight: 700,
+            color: accent,
+            textShadow: `0 0 24px ${accent}99, 0 0 48px ${accent}44`,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {days.toLocaleString("ar-EG")}
+        </span>
+      </div>
+      <p
+        className="text-base tracking-wide"
+        style={{
+          color: `${accent}bb`,
+          fontFamily: "'Cairo', sans-serif",
+          textShadow: `0 0 12px ${accent}44`,
+          ...centeredText,
+        }}
+      >
+        {label}
+      </p>
+    </motion.div>
+  );
+}
+
+/* ── YouTube helper ── */
 function getYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
@@ -70,8 +130,7 @@ function getYouTubeId(url: string): string | null {
 }
 
 function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
-  const ytId = video.type === "youtube" || getYouTubeId(video.url) ? getYouTubeId(video.url) : null;
-
+  const ytId = getYouTubeId(video.url);
   return (
     <motion.div {...fadeUp(0.05)} className="rounded-2xl overflow-hidden" style={{
       background: `linear-gradient(135deg, ${accent}08 0%, ${accent}04 100%)`,
@@ -90,12 +149,7 @@ function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
           />
         </div>
       ) : (
-        <video
-          src={video.url}
-          controls
-          className="w-full"
-          style={{ maxHeight: "340px", background: "#000" }}
-        />
+        <video src={video.url} controls className="w-full" style={{ maxHeight: "340px", background: "#000" }} />
       )}
       {video.title && (
         <div className="px-4 py-3">
@@ -112,6 +166,7 @@ function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
   );
 }
 
+/* ── Gallery grid + lightbox ── */
 function GalleryGrid({ accent }: { accent: string }) {
   const { images } = useAppStore();
   const { lang } = useLang();
@@ -133,22 +188,15 @@ function GalleryGrid({ accent }: { accent: string }) {
             transition={{ duration: 0.5, delay: i * 0.04 }}
             className="break-inside-avoid cursor-pointer rounded-xl overflow-hidden group"
             onClick={() => { setLightbox(img.url); setLightboxAlt(img.alt); }}
-            style={{
-              border: `1px solid ${accent}22`,
-              boxShadow: `0 4px 16px rgba(0,0,0,0.4)`,
-              transition: "transform 0.3s, box-shadow 0.3s",
-            }}
+            style={{ border: `1px solid ${accent}22`, boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
             whileHover={{ scale: 1.02, boxShadow: `0 8px 32px ${accent}20, 0 0 0 1px ${accent}30` }}
           >
             <img
               src={img.url}
               alt={img.alt}
               className="w-full object-cover"
-              style={{ display: "block" }}
               loading="lazy"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
             <div className="px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `linear-gradient(to top, ${accent}15, transparent)` }}>
               <p className="text-xs text-center" style={{ color: accent, fontFamily: "'Cairo', sans-serif" }}>{img.alt}</p>
@@ -161,17 +209,13 @@ function GalleryGrid({ accent }: { accent: string }) {
       <AnimatePresence>
         {lightbox && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4"
             style={{ background: "rgba(0,0,0,0.94)", backdropFilter: "blur(20px)" }}
             onClick={() => setLightbox(null)}
           >
             <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0 }}
+              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="relative max-w-4xl w-full"
               onClick={(e) => e.stopPropagation()}
@@ -180,28 +224,14 @@ function GalleryGrid({ accent }: { accent: string }) {
                 src={lightbox}
                 alt={lightboxAlt}
                 className="w-full h-auto rounded-2xl"
-                style={{
-                  maxHeight: "85vh",
-                  objectFit: "contain",
-                  boxShadow: `0 0 60px ${accent}30, 0 0 120px ${accent}10`,
-                  border: `1px solid ${accent}30`,
-                }}
+                style={{ maxHeight: "85vh", objectFit: "contain", boxShadow: `0 0 60px ${accent}30`, border: `1px solid ${accent}30` }}
               />
               {lightboxAlt && (
-                <p className="text-center mt-3 text-sm" style={{ color: accent, fontFamily: "'Cairo', sans-serif" }}>
-                  {lightboxAlt}
-                </p>
+                <p className="text-center mt-3 text-sm" style={{ color: accent, fontFamily: "'Cairo', sans-serif" }}>{lightboxAlt}</p>
               )}
-              <button
-                onClick={() => setLightbox(null)}
+              <button onClick={() => setLightbox(null)}
                 className="absolute -top-4 -right-4 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"
-                style={{
-                  background: "rgba(5,3,15,0.95)",
-                  border: `1px solid ${accent}40`,
-                  color: accent,
-                  boxShadow: `0 0 16px ${accent}20`,
-                }}
-              >
+                style={{ background: "rgba(5,3,15,0.95)", border: `1px solid ${accent}40`, color: accent }}>
                 ✕
               </button>
             </motion.div>
@@ -210,8 +240,7 @@ function GalleryGrid({ accent }: { accent: string }) {
       </AnimatePresence>
 
       <div className="text-center mt-6">
-        <a
-          href="/admin"
+        <a href="/admin"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
           style={{
             background: `linear-gradient(135deg, ${accent}15, ${accent}08)`,
@@ -219,9 +248,7 @@ function GalleryGrid({ accent }: { accent: string }) {
             color: accent,
             fontFamily: "'Cairo', sans-serif",
             boxShadow: `0 0 16px ${accent}10`,
-            textShadow: `0 0 8px ${accent}60`,
-          }}
-        >
+          }}>
           <span>📸</span>
           {lang === "ar" ? "إضافة صور أو فيديوهات" : "Add Photos or Videos"}
         </a>
@@ -288,7 +315,7 @@ export default function MainPage() {
         "Must you become a beast to show mercy, forgiveness, and pardon?",
         "Forgive so you may be forgiven, pardon so pardon may be granted, and excuse so you may be excused.",
         "Know that God's veil of protection has a measure — as light as the weight of a mosquito's wing, not the weight of an atom.",
-        "Guard your veil and your secrets so your cover is not lost. And if things become too tight, rush to the expanse of God's infinite mercy.",
+        "And if things become too tight, rush to the expanse of God's infinite mercy.",
       ];
 
   const variantTextColor: Record<string, string> = {
@@ -313,17 +340,16 @@ export default function MainPage() {
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-24 pb-8">
 
-        {/* HERO */}
+        {/* ── HERO ── */}
         <SectionWrapper id="hero">
           <div id="hero">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.2, ease: "easeOut" }}
-              className="text-center py-16 mb-4"
+              className="text-center py-12 mb-4"
             >
-              <div className="relative inline-block mb-6">
-                <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: `0 0 80px ${accent}22, 0 0 160px ${accent}0a` }} />
+              <div className="relative inline-block mb-4">
                 <h1 style={{
                   fontFamily: "'Amiri', serif",
                   fontSize: "clamp(2.8rem, 10vw, 6rem)",
@@ -340,45 +366,25 @@ export default function MainPage() {
                 </h1>
               </div>
 
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }} className="text-lg tracking-widest mb-2" style={{
-                color: accent, opacity: 0.8,
-                textShadow: `0 0 16px ${accent}88`,
-                fontFamily: "'Cairo', sans-serif", letterSpacing: "0.2em", textAlign: "center",
-              }}>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }}
+                className="text-lg tracking-widest mb-2"
+                style={{ color: accent, opacity: 0.8, textShadow: `0 0 16px ${accent}88`, fontFamily: "'Cairo', sans-serif", letterSpacing: "0.2em", textAlign: "center" }}>
                 {lang === "ar" ? "✦ ١٤ مايو ٢٠٢٦ ✦" : "✦ May 14, 2026 ✦"}
               </motion.p>
 
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.8 }} className="text-sm tracking-[0.25em]" style={{ color: `${accent}55`, fontFamily: "'Cairo', sans-serif", textAlign: "center" }}>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.8 }}
+                className="text-sm tracking-[0.25em] mb-2"
+                style={{ color: `${accent}55`, fontFamily: "'Cairo', sans-serif", textAlign: "center" }}>
                 Celebration — احتفال
               </motion.p>
+
+              {/* Days counter */}
+              <DaysSinceCounter accent={accent} />
             </motion.div>
           </div>
         </SectionWrapper>
 
-        {/* GALLERY */}
-        <SectionWrapper id="gallery">
-          <div id="gallery-section">
-            <motion.div {...fadeUp()}>
-              <div className="mb-4 text-center">
-                <h2 className="text-2xl font-bold mb-2" style={{
-                  ...bodyFont, color: accent,
-                  textShadow: `0 0 20px ${accent}88`,
-                  ...centeredText,
-                }}>
-                  {lang === "ar" ? "📸 معرض الصور" : "📸 Photo Gallery"}
-                </h2>
-                <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif", fontSize: "0.85rem" }}>
-                  {lang === "ar" ? "✦ لحظات لا تُنسى ✦" : "✦ Unforgettable moments ✦"}
-                </p>
-              </div>
-              <GalleryGrid accent={accent} />
-            </motion.div>
-          </div>
-        </SectionWrapper>
-
-        <Divider />
-
-        {/* CELEBRATION */}
+        {/* ── CELEBRATION ── */}
         <SectionWrapper id="celebration">
           <div id="celebration-section">
             <motion.div {...fadeUp()}>
@@ -405,7 +411,7 @@ export default function MainPage() {
           </div>
         </SectionWrapper>
 
-        {/* POETRY */}
+        {/* ── POETRY ── */}
         <SectionWrapper id="poetry1">
           <motion.div {...fadeUp()}>
             <NeonCard variant="cyan" className="mb-6">
@@ -431,7 +437,38 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* PHILOSOPHY 1 */}
+        <Divider />
+
+        {/* ── GALLERY ── */}
+        <SectionWrapper id="gallery">
+          <div id="gallery-section">
+            <motion.div {...fadeUp()}>
+              {/* Only show "لحظات لا تنسى" — no "معرض الصور" title */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                className="mb-8 tracking-widest"
+                style={{
+                  fontFamily: "'Amiri', serif",
+                  fontSize: "clamp(1.6rem, 5vw, 2.8rem)",
+                  color: accent,
+                  textShadow: `0 0 24px ${accent}88, 0 0 48px ${accent}44`,
+                  ...centeredText,
+                  letterSpacing: "0.15em",
+                }}
+              >
+                ✦ {lang === "ar" ? "لحظات لا تُنسى" : "Unforgettable Moments"} ✦
+              </motion.p>
+              <GalleryGrid accent={accent} />
+            </motion.div>
+          </div>
+        </SectionWrapper>
+
+        <Divider />
+
+        {/* ── PHILOSOPHY 1 ── */}
         <SectionWrapper id="philosophy1">
           <motion.div {...fadeUp()}>
             <NeonCard variant="purple" className="mb-6">
@@ -446,7 +483,7 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* PHILOSOPHY 2 */}
+        {/* ── PHILOSOPHY 2 ── */}
         <SectionWrapper id="philosophy2">
           <motion.div {...fadeUp()}>
             <NeonCard variant="rose" className="mb-6">
@@ -472,16 +509,12 @@ export default function MainPage() {
 
         <Divider />
 
-        {/* VIDEOS */}
+        {/* ── VIDEOS ── */}
         <SectionWrapper id="videos">
           {visibleVideos.length > 0 && (
             <div className="mb-8">
               <motion.div {...fadeUp()} className="text-center mb-6">
-                <h2 className="text-2xl font-bold mb-2" style={{
-                  ...bodyFont, color: accent,
-                  textShadow: `0 0 20px ${accent}88`,
-                  ...centeredText,
-                }}>
+                <h2 className="text-2xl font-bold mb-1" style={{ ...bodyFont, color: accent, textShadow: `0 0 20px ${accent}88`, ...centeredText }}>
                   {lang === "ar" ? "🎬 معرض الفيديوهات" : "🎬 Video Gallery"}
                 </h2>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Cairo', sans-serif", fontSize: "0.85rem" }}>
@@ -498,7 +531,7 @@ export default function MainPage() {
           )}
         </SectionWrapper>
 
-        {/* MESSAGES HEADER */}
+        {/* ── MESSAGES HEADER ── */}
         <SectionWrapper id="messages">
           <motion.div {...fadeUp()} className="text-center mb-10" id="messages-section">
             <h2 className="text-3xl font-bold mb-3" style={{ ...bodyFont, color: accent, textShadow: `0 0 24px ${accent}aa, 0 0 48px ${accent}55`, ...centeredText }}>
@@ -510,7 +543,7 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* MARWAN CARD */}
+        {/* ── MARWAN CARD ── */}
         {marwanVisible && (
           <SectionWrapper id="marwan-card">
             <NeonCard variant="purple" className="mb-6" delay={0.1}>
@@ -519,13 +552,9 @@ export default function MainPage() {
                   ✉︎ {lang === "ar" ? "رسالة مروان" : "Marwan's Letter"}
                 </h4>
                 {lang === "en" && (
-                  <p className="text-xs mb-3 italic" style={{ color: "rgba(255,255,255,0.3)", ...centeredText }}>
-                    (Written in Arabic — a personal message)
-                  </p>
+                  <p className="text-xs mb-3 italic" style={{ color: "rgba(255,255,255,0.3)", ...centeredText }}>(Written in Arabic — a personal message)</p>
                 )}
-                <p className="mb-2" style={{ color: "#ce93d8", ...centeredText }}>
-                  إلى أختي وحبيبتي العروسة، أرقى وأجمل أميرة نجم
-                </p>
+                <p className="mb-2" style={{ color: "#ce93d8", ...centeredText }}>إلى أختي وحبيبتي العروسة، أرقى وأجمل أميرة نجم</p>
                 <div style={{ ...justifyText }}>
                   <p className="mb-3">عايزك بس تكوني متأكدة أني والله ما منعني عن حضور غير العذر القهري، الخارج عن الإرادة المنفردة، بس أكيد في يوم من الأيام هنتقابل وهقدر أشرحلك الموقف كامل.</p>
                   <p className="mb-3">سامحيني يا حبيبتي.</p>
@@ -540,7 +569,7 @@ export default function MainPage() {
           </SectionWrapper>
         )}
 
-        {/* SARA CARD */}
+        {/* ── SARA CARD ── */}
         {saraVisible && (
           <SectionWrapper id="sara-card">
             <NeonCard variant="cyan" className="mb-6" delay={0.15}>
@@ -587,7 +616,7 @@ export default function MainPage() {
           </SectionWrapper>
         )}
 
-        {/* CUSTOM CARDS */}
+        {/* ── CUSTOM CARDS ── */}
         {customCards.filter((c) => c.visible).map((card, i) => (
           <motion.div key={card.id} {...fadeUp(i * 0.05)}>
             <NeonCard variant={card.variant} className="mb-6">

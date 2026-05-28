@@ -169,16 +169,18 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 1 }}
-          className="relative mx-auto mb-6 w-32 h-32 flex items-center justify-center"
+          className="relative mx-auto mb-6 flex items-center justify-center"
+          style={{ width: "220px", height: "220px" }}
         >
-          <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(200,255,0,0.4)", animation: "ring-spin-cw 8s linear infinite" }} />
-          <div className="absolute inset-3 rounded-full" style={{ border: "1px solid rgba(200,255,0,0.25)", animation: "ring-spin-ccw 5s linear infinite" }} />
-          <div className="absolute inset-6 rounded-full" style={{ border: "1px solid rgba(0,229,255,0.2)", animation: "ring-spin-cw 3s linear infinite" }} />
+          <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(200,255,0,0.35)", animation: "ring-spin-cw 10s linear infinite" }} />
+          <div className="absolute inset-4 rounded-full" style={{ border: "1.5px solid rgba(200,255,0,0.2)", animation: "ring-spin-ccw 6s linear infinite" }} />
+          <div className="absolute inset-8 rounded-full" style={{ border: "1px solid rgba(0,229,255,0.18)", animation: "ring-spin-cw 4s linear infinite" }} />
+          <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(200,255,0,0.06) 0%, transparent 70%)" }} />
           <img
             src={displayLogo}
             alt="شعار"
             style={{
-              height: "64px",
+              height: "140px",
               width: "auto",
               objectFit: "contain",
               position: "relative",
