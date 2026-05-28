@@ -262,6 +262,20 @@
   line-height: 2.2;
 }
 
+/* Music player keyframes */
+@keyframes music-pulse {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  100% { transform: scale(1.9);  opacity: 0;   }
+}
+
+@keyframes wave-bar {
+  from { height: 4px; }
+  to   { height: 18px; }
+}
+
+@keyframes ring-spin-cw  { from { transform: rotate(0deg);   } to { transform: rotate(360deg);   } }
+@keyframes ring-spin-ccw { from { transform: rotate(0deg);   } to { transform: rotate(-360deg);  } }
+
 /* Star background */
 .stars-bg {
   background:

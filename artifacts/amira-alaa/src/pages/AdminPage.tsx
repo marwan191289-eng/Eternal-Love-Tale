@@ -22,11 +22,14 @@ export default function AdminPage() {
     removeImage,
     messages,
     toggleMessage,
+    musicUrl,
+    setMusicUrl,
   } = useAppStore();
 
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newImageAlt, setNewImageAlt] = useState("");
   const [newSitePassword, setNewSitePassword] = useState(sitePassword);
+  const [newMusicUrl, setNewMusicUrl] = useState(musicUrl);
 
   function handleLogin() {
     if (password === ADMIN_PASSWORD) {
@@ -293,6 +296,54 @@ export default function AdminPage() {
                 </p>
               )}
             </div>
+          </div>
+        </AdminSection>
+
+        {/* Music */}
+        <AdminSection title="🎵 رابط الموسيقى">
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Cairo', sans-serif" }}>
+              أضف رابط MP3 مباشر للموسيقى التي تريد تشغيلها في الموقع
+            </p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newMusicUrl}
+                onChange={(e) => setNewMusicUrl(e.target.value)}
+                placeholder="https://example.com/music.mp3"
+                className="flex-1 px-3 py-2 rounded-lg"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,215,0,0.25)",
+                  color: "#fff",
+                  fontFamily: "'Cairo', sans-serif",
+                  direction: "ltr",
+                  fontSize: "0.85rem",
+                }}
+              />
+              <button
+                onClick={() => setMusicUrl(newMusicUrl.trim())}
+                className="px-4 py-2 rounded-lg flex-shrink-0"
+                style={{
+                  background: "rgba(255,215,0,0.2)",
+                  border: "1px solid rgba(255,215,0,0.4)",
+                  color: "#FFD700",
+                  fontFamily: "'Cairo', sans-serif",
+                }}
+              >
+                حفظ
+              </button>
+            </div>
+            {musicUrl && (
+              <p className="text-xs" style={{ color: "rgba(0,229,255,0.6)", direction: "ltr", fontFamily: "monospace" }}>
+                ✓ {musicUrl}
+              </p>
+            )}
+            {!musicUrl && (
+              <p className="text-xs" style={{ color: "rgba(255,100,100,0.5)", fontFamily: "'Cairo', sans-serif" }}>
+                لا توجد موسيقى مضبوطة حالياً
+              </p>
+            )}
           </div>
         </AdminSection>
 
