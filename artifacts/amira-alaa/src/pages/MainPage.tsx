@@ -429,7 +429,7 @@ export default function MainPage() {
                   </motion.p>
                 ))}
                 <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.7, duration: 0.8 }} className="mt-5 font-bold" style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.1rem", ...centeredText }}>
-                  {lang === "ar" ? "أم قدرك ظلمته وقسوته" : "Or your fate — its darkness and cruelty?"}
+                  {lang === "ar" ? "أنصيبُك ،، نورهِ وعظمتِه ،،،،،، أم قدرك ،، ظلمتِه وقسوتِه" : "Or your fate — its darkness and cruelty?"}
                 </motion.p>
                 <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9, duration: 0.8 }} className="mt-3 italic" style={{ color: "#00e5ffaa", fontSize: "0.9rem", ...centeredText }}>
                   {lang === "ar" ? "من أعماق الروح" : "From the depths of the soul"}
