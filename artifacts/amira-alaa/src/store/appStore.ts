@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { DEFAULT_GALLERY_IMAGES, DEFAULT_MUSIC_URL } from "@/data/defaultAssets";
 
 interface Section {
   id: string;
@@ -14,10 +15,13 @@ interface ImageItem {
   visible: boolean;
 }
 
-interface MessageItem {
+export interface CustomCard {
   id: string;
-  sender: string;
-  preview: string;
+  variant: "gold" | "cyan" | "rose" | "purple";
+  titleAr: string;
+  titleEn: string;
+  contentAr: string;
+  contentEn: string;
   visible: boolean;
 }
 
@@ -42,11 +46,11 @@ export const TEXT_PALETTES: ColorTheme[] = [
 ];
 
 export const BG_PALETTES = [
-  { id: "bg-navy",    name: "أزرق ليلي",  nameEn: "Deep Navy",    value: "radial-gradient(ellipse at 10% 20%, #0a0e2a 0%, #060818 60%, #020510 100%)" },
-  { id: "bg-black",   name: "أسود نقي",   nameEn: "Pure Black",   value: "radial-gradient(ellipse at center, #0d0d0d 0%, #000000 70%)" },
-  { id: "bg-violet",  name: "بنفسجي عميق",nameEn: "Deep Violet",  value: "radial-gradient(ellipse at 30% 40%, #120a2a 0%, #06040f 70%, #000000 100%)" },
-  { id: "bg-emerald", name: "أخضر ليلي",  nameEn: "Dark Emerald", value: "radial-gradient(ellipse at 70% 30%, #041a0e 0%, #010c06 70%, #000000 100%)" },
-  { id: "bg-dark-rose",name: "ورد ليلي",  nameEn: "Dark Rose",    value: "radial-gradient(ellipse at 50% 30%, #1a0610 0%, #0a0308 70%, #000000 100%)" },
+  { id: "bg-navy",     name: "أزرق ليلي",   nameEn: "Deep Navy",    value: "radial-gradient(ellipse at 10% 20%, #0a0e2a 0%, #060818 60%, #020510 100%)" },
+  { id: "bg-black",    name: "أسود نقي",    nameEn: "Pure Black",   value: "radial-gradient(ellipse at center, #0d0d0d 0%, #000000 70%)" },
+  { id: "bg-violet",   name: "بنفسجي عميق", nameEn: "Deep Violet",  value: "radial-gradient(ellipse at 30% 40%, #120a2a 0%, #06040f 70%, #000000 100%)" },
+  { id: "bg-emerald",  name: "أخضر ليلي",   nameEn: "Dark Emerald", value: "radial-gradient(ellipse at 70% 30%, #041a0e 0%, #010c06 70%, #000000 100%)" },
+  { id: "bg-dark-rose",name: "ورد ليلي",    nameEn: "Dark Rose",    value: "radial-gradient(ellipse at 50% 30%, #1a0610 0%, #0a0308 70%, #000000 100%)" },
 ];
 
 export const COMBINED_THEMES: ColorTheme[] = [
@@ -61,21 +65,34 @@ export const COMBINED_THEMES: ColorTheme[] = [
 type ThemeMode = "default" | "text" | "bg" | "combined";
 
 interface AppStore {
+  adminPassword: string;
+  setAdminPassword: (p: string) => void;
+
   sitePassword: string;
-  sitePasswordEnabled: boolean;
   setSitePassword: (p: string) => void;
+  sitePasswordEnabled: boolean;
   setSitePasswordEnabled: (v: boolean) => void;
 
   sections: Section[];
   toggleSection: (id: string) => void;
+  setSectionVisible: (id: string, v: boolean) => void;
 
   images: ImageItem[];
   toggleImage: (id: string) => void;
   addImage: (img: { url: string; alt: string }) => void;
   removeImage: (id: string) => void;
+  reorderImages: (from: number, to: number) => void;
 
-  messages: MessageItem[];
-  toggleMessage: (id: string) => void;
+  customCards: CustomCard[];
+  addCustomCard: (card: Omit<CustomCard, "id">) => void;
+  updateCustomCard: (id: string, updates: Partial<CustomCard>) => void;
+  removeCustomCard: (id: string) => void;
+  toggleCustomCard: (id: string) => void;
+
+  marwanVisible: boolean;
+  setMarwanVisible: (v: boolean) => void;
+  saraVisible: boolean;
+  setSaraVisible: (v: boolean) => void;
 
   themeMode: ThemeMode;
   setThemeMode: (m: ThemeMode) => void;
@@ -93,9 +110,12 @@ interface AppStore {
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
+      adminPassword: "amira2026",
+      setAdminPassword: (p) => set({ adminPassword: p }),
+
       sitePassword: "amira2026",
-      sitePasswordEnabled: false,
       setSitePassword: (p) => set({ sitePassword: p }),
+      sitePasswordEnabled: false,
       setSitePasswordEnabled: (v) => set({ sitePasswordEnabled: v }),
 
       sections: [
@@ -104,11 +124,7 @@ export const useAppStore = create<AppStore>()(
         { id: "poetry1",      label: "قصيدة الحكاية",        visible: true },
         { id: "philosophy1",  label: "نص فطرة البشر",        visible: true },
         { id: "philosophy2",  label: "نص الرجال نوعان",      visible: true },
-        { id: "imagestrip",   label: "شريط الصور",           visible: true },
         { id: "messages",     label: "قسم الرسائل",          visible: true },
-        { id: "amira-card",   label: "بطاقة أميرة",          visible: true },
-        { id: "alaa-card",    label: "بطاقة علاء",           visible: true },
-        { id: "family-card",  label: "بطاقة الأهل",          visible: true },
         { id: "marwan-card",  label: "رسالة مروان",          visible: true },
         { id: "sara-card",    label: "تهنئة سارة وحمزة",     visible: true },
       ],
@@ -118,8 +134,14 @@ export const useAppStore = create<AppStore>()(
             sec.id === id ? { ...sec, visible: !sec.visible } : sec
           ),
         })),
+      setSectionVisible: (id, v) =>
+        set((s) => ({
+          sections: s.sections.map((sec) =>
+            sec.id === id ? { ...sec, visible: v } : sec
+          ),
+        })),
 
-      images: [],
+      images: DEFAULT_GALLERY_IMAGES,
       toggleImage: (id) =>
         set((s) => ({
           images: s.images.map((img) =>
@@ -135,20 +157,41 @@ export const useAppStore = create<AppStore>()(
         })),
       removeImage: (id) =>
         set((s) => ({ images: s.images.filter((img) => img.id !== id) })),
+      reorderImages: (from, to) =>
+        set((s) => {
+          const imgs = [...s.images];
+          const [moved] = imgs.splice(from, 1);
+          imgs.splice(to, 0, moved);
+          return { images: imgs };
+        }),
 
-      messages: [
-        { id: "amira-msg",  sender: "أميرة",               preview: "بطاقة أميرة",                visible: false },
-        { id: "alaa-msg",   sender: "علاء",                 preview: "بطاقة علاء",                 visible: false },
-        { id: "family-msg", sender: "الأهل والأحبة",        preview: "بطاقة الأهل",                visible: false },
-        { id: "marwan-msg", sender: "مروان نجم",            preview: "رسالة مروان إلى أميرة",      visible: true  },
-        { id: "sara-msg",   sender: "سارة نجم وحمزة نجم",  preview: "تهنئة سارة وحمزة",           visible: true  },
-      ],
-      toggleMessage: (id) =>
+      customCards: [],
+      addCustomCard: (card) =>
         set((s) => ({
-          messages: s.messages.map((m) =>
-            m.id === id ? { ...m, visible: !m.visible } : m
+          customCards: [
+            ...s.customCards,
+            { ...card, id: `card-${Date.now()}-${Math.random()}` },
+          ],
+        })),
+      updateCustomCard: (id, updates) =>
+        set((s) => ({
+          customCards: s.customCards.map((c) =>
+            c.id === id ? { ...c, ...updates } : c
           ),
         })),
+      removeCustomCard: (id) =>
+        set((s) => ({ customCards: s.customCards.filter((c) => c.id !== id) })),
+      toggleCustomCard: (id) =>
+        set((s) => ({
+          customCards: s.customCards.map((c) =>
+            c.id === id ? { ...c, visible: !c.visible } : c
+          ),
+        })),
+
+      marwanVisible: true,
+      setMarwanVisible: (v) => set({ marwanVisible: v }),
+      saraVisible: true,
+      setSaraVisible: (v) => set({ saraVisible: v }),
 
       themeMode: "default",
       setThemeMode: (m) => set({ themeMode: m }),
@@ -159,9 +202,9 @@ export const useAppStore = create<AppStore>()(
       selectedCombinedTheme: "royal-gold",
       setSelectedCombinedTheme: (id) => set({ selectedCombinedTheme: id }),
 
-      musicUrl: "",
+      musicUrl: DEFAULT_MUSIC_URL,
       setMusicUrl: (url) => set({ musicUrl: url }),
     }),
-    { name: "amira-alaa-store-v2" }
+    { name: "amira-alaa-store-v3" }
   )
 );

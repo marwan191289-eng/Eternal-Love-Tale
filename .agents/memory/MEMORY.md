@@ -1,0 +1,2 @@
+- [Arabic ligature fix](arabic-ligature-fix.md) — never render Arabic chars in individual inline-block spans or use letterSpacing > 0; breaks connected letterforms.
+- [Admin page routing](admin-routing.md) — admin must bypass splash via useLocation check; wouter `useLocation` used inside WouterRouter context.

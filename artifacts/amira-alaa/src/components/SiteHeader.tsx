@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLang } from "@/context/LangContext";
 
 export default function SiteHeader() {
-  const { lang, setLang, t, dir } = useLang();
+  const { lang, setLang, dir } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const scrollTo = (id: string) => {
@@ -21,7 +21,6 @@ export default function SiteHeader() {
         boxShadow: "0 4px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,215,0,0.04)",
       }}
     >
-      {/* Top accent line */}
       <div
         className="absolute top-0 left-0 right-0 h-[2px]"
         style={{
@@ -31,7 +30,6 @@ export default function SiteHeader() {
       />
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between" dir={dir}>
-        {/* Logo / Names */}
         <motion.div
           initial={{ opacity: 0, x: dir === "rtl" ? 20 : -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -51,7 +49,7 @@ export default function SiteHeader() {
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
                 animation: "shimmer-text 4s linear infinite",
-                letterSpacing: "0.04em",
+                letterSpacing: lang === "ar" ? "0" : "0.04em",
               }}
             >
               {lang === "ar" ? "أميرة & علاء" : "Amira & Alaa"}
@@ -96,7 +94,6 @@ export default function SiteHeader() {
             </button>
           ))}
 
-          {/* Language toggle */}
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="px-3 py-1.5 rounded-full text-sm font-bold transition-all duration-300"
@@ -113,7 +110,6 @@ export default function SiteHeader() {
             {lang === "ar" ? "EN" : "عربي"}
           </button>
 
-          {/* Admin link */}
           <a
             href="/admin"
             className="px-3 py-1.5 rounded-full text-xs transition-all duration-200"
@@ -127,9 +123,8 @@ export default function SiteHeader() {
           </a>
         </nav>
 
-        {/* Mobile menu button */}
+        {/* Mobile */}
         <div className="flex items-center gap-2 md:hidden">
-          {/* Language toggle mobile */}
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="px-3 py-1.5 rounded-full text-sm font-bold"
@@ -152,7 +147,6 @@ export default function SiteHeader() {
         </div>
       </div>
 
-      {/* Mobile dropdown */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div

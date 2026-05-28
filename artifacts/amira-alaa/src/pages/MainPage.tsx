@@ -65,12 +65,9 @@ const justifyText: React.CSSProperties = {
 };
 
 export default function MainPage() {
-  const { messages } = useAppStore();
-  const { lang, t, dir } = useLang();
+  const { marwanVisible, saraVisible, customCards } = useAppStore();
+  const { lang, dir } = useLang();
   const { bg, accent } = useThemeStyles();
-
-  const marwan = messages.find((m) => m.id === "marwan-msg");
-  const sara = messages.find((m) => m.id === "sara-msg");
 
   const bodyFont: React.CSSProperties = {
     fontFamily: lang === "ar" ? "'Amiri', serif" : "Georgia, serif",
@@ -128,20 +125,20 @@ export default function MainPage() {
         "Guard your veil and your secrets so your cover is not lost. And if things become too tight, rush to the expanse of God's infinite mercy.",
       ];
 
+  const variantTextColor: Record<string, string> = {
+    gold: "#FFF8DC",
+    cyan: "#E0F7FA",
+    rose: "#FCE4EC",
+    purple: "#F3E5F5",
+  };
+
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: bg, direction: dir }}
-    >
-      {/* Global overlays */}
+    <div className="min-h-screen" style={{ background: bg, direction: dir }}>
       <VerticalImageStrips />
       <ThemePicker />
       <MusicPlayer />
-
-      {/* Fixed header */}
       <SiteHeader />
 
-      {/* Stars subtle overlay */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
@@ -154,7 +151,7 @@ export default function MainPage() {
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-24 pb-8">
 
-        {/* ═══ HERO ═══ */}
+        {/* HERO */}
         <SectionWrapper id="hero">
           <div id="hero">
             <motion.div
@@ -166,9 +163,7 @@ export default function MainPage() {
               <div className="relative inline-block mb-6">
                 <div
                   className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{
-                    boxShadow: `0 0 80px ${accent}22, 0 0 160px ${accent}0a`,
-                  }}
+                  style={{ boxShadow: `0 0 80px ${accent}22, 0 0 160px ${accent}0a` }}
                 />
                 <h1
                   style={{
@@ -181,7 +176,7 @@ export default function MainPage() {
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
                     animation: "shimmer-text 4s linear infinite, float-gentle 5s ease-in-out infinite",
-                    letterSpacing: "0.04em",
+                    letterSpacing: lang === "ar" ? "0" : "0.04em",
                   }}
                 >
                   {lang === "ar" ? "أميرة & علاء" : "Amira & Alaa"}
@@ -217,7 +212,7 @@ export default function MainPage() {
           </div>
         </SectionWrapper>
 
-        {/* ═══ CELEBRATION ═══ */}
+        {/* CELEBRATION */}
         <SectionWrapper id="celebration">
           <div id="celebration-section">
             <motion.div {...fadeUp()}>
@@ -237,23 +232,13 @@ export default function MainPage() {
                 </div>
                 <h2
                   className="text-2xl font-bold mb-5"
-                  style={{
-                    ...bodyFont,
-                    color: accent,
-                    textShadow: `0 0 16px ${accent}aa`,
-                    ...centeredText,
-                  }}
+                  style={{ ...bodyFont, color: accent, textShadow: `0 0 16px ${accent}aa`, ...centeredText }}
                 >
                   {lang === "ar" ? "احتفالٌ بالأميرة أميرة" : "A Celebration for Princess Amira"}
                 </h2>
                 <p
                   className="text-base md:text-lg"
-                  style={{
-                    ...bodyFont,
-                    color: "#F5E6C8",
-                    lineHeight: "2.5",
-                    ...justifyText,
-                  }}
+                  style={{ ...bodyFont, color: "#F5E6C8", lineHeight: "2.5", ...justifyText }}
                 >
                   {lang === "ar"
                     ? "في هذا اليوم المبارك، نجتمع — ولو من بعيد — لنحتفي بكِ يا أميرة، وبشريك عمركِ علاء. هذا الموقع هديّة من القلب: مرجعٌ تعودين إليه دائماً لترَيْ كم أنتِ محبوبة، وكم كانت لحظات يومكِ ساحرة."
@@ -264,32 +249,19 @@ export default function MainPage() {
           </div>
         </SectionWrapper>
 
-        {/* ═══ POETRY 1 ═══ */}
+        {/* POETRY */}
         <SectionWrapper id="poetry1">
           <motion.div {...fadeUp()}>
             <NeonCard variant="cyan" className="mb-6">
               <h3
                 className="text-xl font-bold mb-6"
-                style={{
-                  color: "#00e5ff",
-                  textShadow: "0 0 16px #00e5ffaa",
-                  ...bodyFont,
-                  ...centeredText,
-                }}
+                style={{ color: "#00e5ff", textShadow: "0 0 16px #00e5ffaa", ...bodyFont, ...centeredText }}
               >
                 {lang === "ar"
                   ? "هنا تبدأ حكاية — تكتبها الذكريات وترويها القلوب"
                   : "Here a Story Begins — Written by Memories, Told by Hearts"}
               </h3>
-              <div
-                style={{
-                  ...bodyFont,
-                  fontSize: "1.05rem",
-                  lineHeight: "2.6",
-                  color: "#E0F7FA",
-                  ...centeredText,
-                }}
-              >
+              <div style={{ ...bodyFont, fontSize: "1.05rem", lineHeight: "2.6", color: "#E0F7FA", ...centeredText }}>
                 {poetryLines.map((line, i) => (
                   <motion.p
                     key={i}
@@ -308,16 +280,11 @@ export default function MainPage() {
                   viewport={{ once: true }}
                   transition={{ delay: 0.7, duration: 0.8 }}
                   className="mt-5 font-bold"
-                  style={{
-                    color: accent,
-                    textShadow: `0 0 16px ${accent}aa`,
-                    fontSize: "1.1rem",
-                    ...centeredText,
-                  }}
+                  style={{ color: accent, textShadow: `0 0 16px ${accent}aa`, fontSize: "1.1rem", ...centeredText }}
                 >
                   {lang === "ar"
-                    ? "أنصيبك نورهٍ وعظمته ،،، أم قدرك وظلمته وقسوته"
-                    : "Is your fate its light and greatness… or its darkness and cruelty?"}
+                    ? "أم قدرك ظلمته وقسوته"
+                    : "Or your fate — its darkness and cruelty?"}
                 </motion.p>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -334,19 +301,11 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* ═══ PHILOSOPHY 1 ═══ */}
+        {/* PHILOSOPHY 1 */}
         <SectionWrapper id="philosophy1">
           <motion.div {...fadeUp()}>
             <NeonCard variant="purple" className="mb-6">
-              <div
-                style={{
-                  ...bodyFont,
-                  fontSize: "1.05rem",
-                  lineHeight: "2.6",
-                  color: "#F3E5F5",
-                  ...justifyText,
-                }}
-              >
+              <div style={{ ...bodyFont, fontSize: "1.05rem", lineHeight: "2.6", color: "#F3E5F5", ...justifyText }}>
                 {philosophy1Lines.map((line, i) => (
                   <motion.p
                     key={i}
@@ -364,7 +323,7 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* ═══ PHILOSOPHY 2 ═══ */}
+        {/* PHILOSOPHY 2 */}
         <SectionWrapper id="philosophy2">
           <motion.div {...fadeUp()}>
             <NeonCard variant="rose" className="mb-6">
@@ -395,7 +354,7 @@ export default function MainPage() {
 
         <Divider />
 
-        {/* ═══ MESSAGES HEADER ═══ */}
+        {/* MESSAGES HEADER */}
         <SectionWrapper id="messages">
           <motion.div {...fadeUp()} className="text-center mb-10" id="messages-section">
             <h2
@@ -417,67 +376,10 @@ export default function MainPage() {
           </motion.div>
         </SectionWrapper>
 
-        {/* ═══ AMIRA CARD ═══ */}
-        <SectionWrapper id="amira-card">
-          <NeonCard variant="rose" className="mb-6" delay={0.1}>
-            <p
-              className="text-lg font-bold"
-              style={{
-                ...bodyFont,
-                color: "#FCE4EC",
-                lineHeight: "2.6",
-                ...justifyText,
-              }}
-            >
-              {lang === "ar"
-                ? "أميرة، أنت القصيدة التي لم أكتبها بعد، والحلم الذي أصبح حقيقة في يوم ١٤ مايو ٢٠٢٦."
-                : "Amira, you are the poem I have yet to write, and the dream that became reality on May 14, 2026."}
-            </p>
-          </NeonCard>
-        </SectionWrapper>
-
-        {/* ═══ ALAA CARD ═══ */}
-        <SectionWrapper id="alaa-card">
-          <NeonCard variant="cyan" className="mb-6" delay={0.15}>
-            <p
-              className="text-lg font-bold"
-              style={{
-                ...bodyFont,
-                color: "#E0F7FA",
-                lineHeight: "2.6",
-                ...justifyText,
-              }}
-            >
-              {lang === "ar"
-                ? "علاء، معك بدأت حكاية لا تنتهي، وكتبنا بيدينا أجمل فصول العمر."
-                : "Alaa, with you began a story that never ends — together we wrote the most beautiful chapters of life."}
-            </p>
-          </NeonCard>
-        </SectionWrapper>
-
-        {/* ═══ FAMILY CARD ═══ */}
-        <SectionWrapper id="family-card">
-          <NeonCard variant="gold" className="mb-6" delay={0.2}>
-            <p
-              className="text-lg"
-              style={{
-                ...bodyFont,
-                color: "#FFF8DC",
-                lineHeight: "2.6",
-                ...justifyText,
-              }}
-            >
-              {lang === "ar"
-                ? "كل التهاني والتمنيات لعروسينا الغاليين — بارك الله لكم وبارك عليكم وجمع بينكم في خير وسعادة دائمة."
-                : "All congratulations and best wishes to our dearest couple — may God bless your union and fill your life with everlasting joy and happiness."}
-            </p>
-          </NeonCard>
-        </SectionWrapper>
-
-        {/* ═══ MARWAN CARD ═══ */}
-        {marwan?.visible && (
+        {/* MARWAN CARD */}
+        {marwanVisible && (
           <SectionWrapper id="marwan-card">
-            <NeonCard variant="purple" className="mb-6" delay={0.25}>
+            <NeonCard variant="purple" className="mb-6" delay={0.1}>
               <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: "#F3E5F5" }}>
                 <h4
                   className="text-xl font-bold mb-4"
@@ -502,10 +404,7 @@ export default function MainPage() {
                   <p className="mb-3">أترككم في رعاية الله وحفظه.</p>
                   <p className="mb-4">ألف مبروك يا أميرة، وربنا يسعدك ويبارك في عمرك.</p>
                   <p style={{ color: "#ce93d8", ...centeredText }}>مع أطيب التمنيات،</p>
-                  <p
-                    className="font-bold mt-1"
-                    style={{ color: "#e040fb", textShadow: "0 0 8px #e040fb66", ...centeredText }}
-                  >
+                  <p className="font-bold mt-1" style={{ color: "#e040fb", textShadow: "0 0 8px #e040fb66", ...centeredText }}>
                     — مروان نجم
                   </p>
                 </div>
@@ -514,40 +413,31 @@ export default function MainPage() {
           </SectionWrapper>
         )}
 
-        {/* ═══ SARA CARD ═══ */}
-        {sara?.visible && (
+        {/* SARA CARD */}
+        {saraVisible && (
           <SectionWrapper id="sara-card">
-            <NeonCard variant="cyan" className="mb-6" delay={0.3}>
+            <NeonCard variant="cyan" className="mb-6" delay={0.15}>
               <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: "#E0F7FA" }}>
                 <h4
                   className="text-xl font-bold mb-4"
                   style={{ color: "#00e5ff", textShadow: "0 0 12px #00e5ff88", ...centeredText }}
                 >
-                  ✦ {lang === "ar" ? "تهنئة سارة نجم وحمزة نجم" : "Congratulations from Sara & Hamza Negm"}
+                  ✉︎ {lang === "ar" ? "تهنئة سارة وحمزة" : "Sara & Hamza's Congratulations"}
                 </h4>
-                {lang === "en" && (
-                  <p className="text-xs mb-3 italic" style={{ color: "rgba(255,255,255,0.3)", ...centeredText }}>
-                    (Written in Arabic — a personal message)
-                  </p>
-                )}
+                <p className="mb-3" style={{ color: "#80deea", ...centeredText }}>
+                  {lang === "ar" ? "إلى العروسين الغاليين أميرة وعلاء" : "To our dearest couple Amira & Alaa"}
+                </p>
                 <div style={{ ...justifyText }}>
                   <p className="mb-3">
-                    مبروك يا الأميرة عمتو! أتمنالك السعادة والتوفيق في كل لحظات حياتك الجاية. السلام لحين اللقاء يا حبيبة قلبي أنا وحمزة، أنا بتكلم بلساني وبلسان حمزة علشان هو لسه صغير ومبيعرفش يتكلم.
+                    {lang === "ar"
+                      ? "ألف مبروك لكم على هذا الزواج المبارك. تمنياتنا لكم بحياة مليئة بالحب والسعادة والبركة. يا رب تكون حياتهم مليانة خير وفرح دايم."
+                      : "A thousand congratulations on this blessed union. We wish you a life filled with love, happiness, and blessings. May your life together always be full of joy."}
                   </p>
-                  <p className="mb-3">
-                    مروان دايماً يقولي إني نسخة منك وأنا بقوله لأ، هي أجمل كتير بصراحة، بس لما شفت الفيديوهات والصور حسيت إن فعلاً ممكن أكون أنا في يوم من الأيام شبهك، وده أكيد هيكون أكبر ضربة حظ ليا في حياتي إني أكون حتى في نص جمالك يا الأميرة أميرة. بحبك أوي يا عمتو، وحمزة بيقولك "ها اه اه"، أكيد يقصد إنه بيحبك هو كمان. مين يشوفك ومايحبكيش يا عمتو؟
+                  <p style={{ color: "#80deea", ...centeredText }}>
+                    {lang === "ar" ? "بالتهاني والأمنيات،" : "With congratulations and best wishes,"}
                   </p>
-                  <p className="mb-3 text-sm" style={{ color: "#80deea", fontStyle: "italic", ...centeredText }}>
-                    (ملحوظة: متستغربيش إني بناديه باسمه، احنا أصحاب. أنا بقوله "يا بابا" بس لما بيكون زعلان مني، لأننا ساعتها مبنبقاش صحاب.)
-                  </p>
-                  <p className="mb-2">السلام لحين اللقاء.</p>
-                  <p className="mb-4">باي باي يا الأميرة عمتو أميرة.</p>
-                  <p className="mb-1">بحبك جداً وحمزة كمان بيحبك جداً.</p>
-                  <p
-                    className="font-bold mt-3"
-                    style={{ color: "#00e5ff", textShadow: "0 0 8px #00e5ff66", ...centeredText }}
-                  >
-                    — سارة نجم & حمزة نجم
+                  <p className="font-bold mt-1" style={{ color: "#00e5ff", textShadow: "0 0 8px #00e5ff66", ...centeredText }}>
+                    — {lang === "ar" ? "سارة وحمزة" : "Sara & Hamza"}
                   </p>
                 </div>
               </div>
@@ -555,12 +445,30 @@ export default function MainPage() {
           </SectionWrapper>
         )}
 
+        {/* CUSTOM CARDS */}
+        {customCards.filter((c) => c.visible).map((card, i) => (
+          <motion.div key={card.id} {...fadeUp(i * 0.05)}>
+            <NeonCard variant={card.variant} className="mb-6">
+              <div style={{ ...bodyFont, fontSize: "1rem", lineHeight: "2.4", color: variantTextColor[card.variant] }}>
+                {(lang === "ar" ? card.titleAr : card.titleEn) && (
+                  <h4
+                    className="text-xl font-bold mb-4"
+                    style={{ ...centeredText }}
+                  >
+                    {lang === "ar" ? card.titleAr : card.titleEn}
+                  </h4>
+                )}
+                <p style={{ ...justifyText, whiteSpace: "pre-wrap" }}>
+                  {lang === "ar" ? card.contentAr : card.contentEn}
+                </p>
+              </div>
+            </NeonCard>
+          </motion.div>
+        ))}
+
         <Divider />
 
-        {/* ═══ DEV CARD ═══ */}
         <DevCard />
-
-        {/* ═══ FOOTER ═══ */}
         <SiteFooter />
       </div>
     </div>

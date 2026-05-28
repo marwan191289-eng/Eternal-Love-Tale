@@ -25,7 +25,7 @@ function TypewriterNames() {
       const t = setTimeout(() => {
         setDisplayed(fullText.slice(0, idx + 1));
         setIdx((i) => i + 1);
-      }, 120);
+      }, 110);
       return () => clearTimeout(t);
     } else {
       setDone(true);
@@ -35,10 +35,6 @@ function TypewriterNames() {
   return (
     <div className="relative inline-block">
       <style>{`
-        @keyframes char-pop {
-          0%   { opacity: 0.3; transform: scale(1.4) translateY(-4px); filter: blur(3px); }
-          100% { opacity: 1;   transform: scale(1) translateY(0);   filter: blur(0); }
-        }
         @keyframes cursor-blink {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }
@@ -52,22 +48,12 @@ function TypewriterNames() {
           color: "#FFD700",
           textShadow:
             "0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.5), 0 0 80px rgba(255,215,0,0.2)",
-          letterSpacing: "0.04em",
+          letterSpacing: lang === "ar" ? "0" : "0.04em",
           lineHeight: 1.2,
+          whiteSpace: "nowrap",
         }}
       >
-        {displayed.split("").map((char, i) => (
-          <span
-            key={`${i}-${char}`}
-            style={{
-              display: "inline-block",
-              animation: i === idx - 1 ? "char-pop 0.35s ease-out forwards" : "none",
-              opacity: 1,
-            }}
-          >
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
+        {displayed}
         {!done && (
           <span
             style={{
@@ -76,20 +62,19 @@ function TypewriterNames() {
               height: "0.85em",
               background: "#FFD700",
               verticalAlign: "middle",
-              marginInlineStart: "2px",
+              marginInlineStart: "4px",
               boxShadow: "0 0 8px #FFD700",
               animation: "cursor-blink 0.7s infinite",
             }}
           />
         )}
       </h1>
-      {/* Glow bloom under text when done */}
       {done && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse 70% 30% at 50% 80%, rgba(255,215,0,0.18) 0%, transparent 70%)",
-            animation: "none",
+            background:
+              "radial-gradient(ellipse 70% 30% at 50% 80%, rgba(255,215,0,0.18) 0%, transparent 70%)",
           }}
         />
       )}
@@ -153,7 +138,7 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
         <Fireworks active={true} />
       </div>
 
-      {/* Language toggle (top-right) */}
+      {/* Language toggle */}
       <button
         className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded-full text-sm font-bold"
         style={{
@@ -196,7 +181,6 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
               boxShadow: "0 0 32px rgba(218,112,214,0.08)",
             }}
           >
-            {/* Top ornament */}
             <div className="flex justify-center mb-3">
               <span style={{ color: "rgba(218,112,214,0.6)", fontSize: "1rem", letterSpacing: "0.5em" }}>
                 ❖ ✦ ❖
@@ -227,7 +211,6 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
             >
               {lang === "ar" ? "سورة الروم — الآية ٢١" : "Surah Ar-Rum — Verse 21"}
             </p>
-            {/* Bottom ornament */}
             <div className="flex justify-center mt-3">
               <span style={{ color: "rgba(218,112,214,0.6)", fontSize: "1rem", letterSpacing: "0.5em" }}>
                 ❖ ✦ ❖

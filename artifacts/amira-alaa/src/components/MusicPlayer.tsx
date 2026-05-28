@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLang } from "@/context/LangContext";
 import { useAppStore } from "@/store/appStore";
@@ -9,17 +9,21 @@ export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [waitingForInteraction, setWaitingForInteraction] = useState(false);
+  const triedAutoplay = useRef(false);
 
-  const toggle = () => {
+  const startPlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
-    } else {
-      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    }
-  };
+    if (!audio || !musicUrl) return;
+    audio.play()
+      .then(() => {
+        setPlaying(true);
+        setWaitingForInteraction(false);
+      })
+      .catch(() => {
+        setPlaying(false);
+      });
+  }, [musicUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -29,14 +33,72 @@ export default function MusicPlayer() {
     return () => audio.removeEventListener("ended", handleEnd);
   }, []);
 
+  useEffect(() => {
+    if (!musicUrl || triedAutoplay.current) return;
+    triedAutoplay.current = true;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const tryAutoplay = () => {
+      audio.play()
+        .then(() => {
+          setPlaying(true);
+          setWaitingForInteraction(false);
+        })
+        .catch(() => {
+          setWaitingForInteraction(true);
+          const onInteract = () => {
+            audio.play()
+              .then(() => {
+                setPlaying(true);
+                setWaitingForInteraction(false);
+              })
+              .catch(() => {});
+            document.removeEventListener("click", onInteract);
+            document.removeEventListener("touchstart", onInteract);
+            document.removeEventListener("keydown", onInteract);
+          };
+          document.addEventListener("click", onInteract, { once: true });
+          document.addEventListener("touchstart", onInteract, { once: true });
+          document.addEventListener("keydown", onInteract, { once: true });
+        });
+    };
+
+    const timer = setTimeout(tryAutoplay, 800);
+    return () => clearTimeout(timer);
+  }, [musicUrl]);
+
+  useEffect(() => {
+    triedAutoplay.current = false;
+  }, [musicUrl]);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      setWaitingForInteraction(false);
+    } else {
+      startPlay();
+    }
+  };
+
   return (
     <>
-      {musicUrl && <audio ref={audioRef} src={musicUrl} loop preload="none" />}
+      {musicUrl && (
+        <audio
+          ref={audioRef}
+          src={musicUrl}
+          loop
+          preload="auto"
+        />
+      )}
 
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
-        {/* Tooltip */}
         <AnimatePresence>
-          {showTooltip && (
+          {(showTooltip || waitingForInteraction) && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -45,13 +107,15 @@ export default function MusicPlayer() {
               className="px-3 py-1.5 rounded-xl text-xs whitespace-nowrap"
               style={{
                 background: "rgba(5,3,15,0.96)",
-                border: "1px solid rgba(255,215,0,0.25)",
-                color: "rgba(255,215,0,0.8)",
+                border: `1px solid ${waitingForInteraction ? "rgba(218,112,214,0.4)" : "rgba(255,215,0,0.25)"}`,
+                color: waitingForInteraction ? "rgba(218,112,214,0.9)" : "rgba(255,215,0,0.8)",
                 fontFamily: "'Cairo', sans-serif",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
               }}
             >
-              {!musicUrl
+              {waitingForInteraction
+                ? (lang === "ar" ? "🎵 انقر في أي مكان لتشغيل الموسيقى" : "🎵 Tap anywhere to start music")
+                : !musicUrl
                 ? (lang === "ar" ? "لا توجد موسيقى — اضبطها من الإدارة" : "No music — set it from Admin")
                 : playing
                 ? (lang === "ar" ? "إيقاف الموسيقى" : "Pause Music")
@@ -60,7 +124,6 @@ export default function MusicPlayer() {
           )}
         </AnimatePresence>
 
-        {/* Main button */}
         <motion.button
           onClick={toggle}
           onMouseEnter={() => setShowTooltip(true)}
@@ -71,18 +134,23 @@ export default function MusicPlayer() {
           style={{
             background: playing
               ? "linear-gradient(135deg, rgba(255,215,0,0.2), rgba(218,112,214,0.18))"
+              : waitingForInteraction
+              ? "linear-gradient(135deg, rgba(218,112,214,0.15), rgba(255,215,0,0.08))"
               : "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,215,0,0.08))",
             border: playing
               ? "1px solid rgba(255,215,0,0.55)"
+              : waitingForInteraction
+              ? "1px solid rgba(218,112,214,0.5)"
               : "1px solid rgba(255,255,255,0.18)",
             boxShadow: playing
               ? "0 0 28px rgba(255,215,0,0.3), 0 0 56px rgba(255,215,0,0.1)"
+              : waitingForInteraction
+              ? "0 0 20px rgba(218,112,214,0.25)"
               : "0 0 14px rgba(0,0,0,0.5)",
             backdropFilter: "blur(16px)",
             transition: "all 0.3s ease",
           }}
         >
-          {/* Pulsing ring when playing */}
           {playing && (
             <>
               <span
@@ -102,7 +170,16 @@ export default function MusicPlayer() {
             </>
           )}
 
-          {/* Waveform bars (visible when playing) */}
+          {waitingForInteraction && !playing && (
+            <span
+              className="absolute inset-0 rounded-full"
+              style={{
+                border: "1px solid rgba(218,112,214,0.4)",
+                animation: "music-pulse 2.2s ease-out infinite",
+              }}
+            />
+          )}
+
           {playing ? (
             <div className="flex items-end gap-0.5 h-5">
               {[1, 2, 3, 4, 3].map((h, i) => (
@@ -121,7 +198,15 @@ export default function MusicPlayer() {
               ))}
             </div>
           ) : (
-            <span style={{ fontSize: "1.4rem", filter: "drop-shadow(0 0 4px rgba(255,215,0,0.4))" }}>
+            <span
+              style={{
+                fontSize: "1.4rem",
+                filter: waitingForInteraction
+                  ? "drop-shadow(0 0 6px rgba(218,112,214,0.6))"
+                  : "drop-shadow(0 0 4px rgba(255,215,0,0.4))",
+                animation: waitingForInteraction ? "float-gentle 2s ease-in-out infinite" : "none",
+              }}
+            >
               🎵
             </span>
           )}

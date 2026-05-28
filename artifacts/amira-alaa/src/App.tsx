@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -86,7 +86,9 @@ function SiteLock({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [location] = useLocation();
+  const isAdmin = location === "/admin";
+  const [showSplash, setShowSplash] = useState(!isAdmin);
   const [fireworksActive, setFireworksActive] = useState(false);
 
   const handleEnter = () => {
@@ -94,6 +96,10 @@ function AppContent() {
     setFireworksActive(true);
     setTimeout(() => setFireworksActive(false), 8000);
   };
+
+  if (isAdmin) {
+    return <AdminPage />;
+  }
 
   return (
     <>
@@ -103,7 +109,6 @@ function AppContent() {
       ) : (
         <Switch>
           <Route path="/" component={MainPage} />
-          <Route path="/admin" component={AdminPage} />
           <Route component={NotFound} />
         </Switch>
       )}
