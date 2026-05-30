@@ -142,6 +142,41 @@ function getDailymotionId(url: string): string | null {
   return url.match(/dailymotion\.com\/video\/([^_?&/]+)/)?.[1] ?? url.match(/dai\.ly\/([^_?&/]+)/)?.[1] ?? null;
 }
 
+function getVideoThumbnail(video: VideoItem): string | null {
+  const url = video.url;
+  const yt = getYouTubeId(url);
+  if (yt) return `https://img.youtube.com/vi/${yt}/hqdefault.jpg`;
+  const drive = getDriveId(url);
+  if (drive) return `https://drive.google.com/thumbnail?id=${drive}&sz=w1200`;
+  const daily = getDailymotionId(url);
+  if (daily) return `https://www.dailymotion.com/thumbnail/video/${daily}`;
+  return null;
+}
+
+function VideoThumbnailBackdrop({ video, accent, label }: { video: VideoItem; accent: string; label: string }) {
+  const thumbnail = getVideoThumbnail(video);
+  return (
+    <>
+      {thumbnail ? (
+        <img
+          src={thumbnail}
+          alt={video.title || label}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          style={{ filter: "saturate(1.08) contrast(1.06) brightness(0.78)", transform: "scale(1.015)" }}
+        />
+      ) : (
+        <div className="absolute inset-0" style={{
+          background: `radial-gradient(circle at 25% 22%, ${accent}38, transparent 28%), radial-gradient(circle at 78% 74%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, ${accent}1f, rgba(0,0,0,0.86))`,
+        }} />
+      )}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.62)), radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.52) 78%)` }} />
+      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: "rgba(0,0,0,0.52)", border: `1px solid ${accent}55`, color: "#fff", fontFamily: "'Cairo', sans-serif", backdropFilter: "blur(10px)" }}>{label}</div>
+    </>
+  );
+}
+
 function isNativeVideoUrl(url: string) {
   return /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) || url.includes("supabase.co/storage/");
 }
@@ -247,20 +282,22 @@ function VideoCard({ video, accent }: { video: VideoItem; accent: string }) {
               <button onClick={closeIframeVideo} className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "rgba(5,3,15,0.86)", border: `1px solid ${accent}55`, color: accent, fontFamily: "'Cairo', sans-serif", boxShadow: `0 0 18px ${accent}22`, backdropFilter: "blur(14px)" }}>إغلاق الفيديو</button>
             </>
           ) : (
-            <button onClick={startIframeVideo} className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3" style={{ background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.72)), radial-gradient(circle at center, ${accent}24, transparent 62%)`, color: accent, fontFamily: "'Cairo', sans-serif" }}>
-              <span style={{ fontSize: "2.4rem", textShadow: `0 0 22px ${accent}AA` }}>▶</span>
-              <span className="text-sm font-bold" style={{ textShadow: `0 0 12px ${accent}88` }}>تشغيل الفيديو</span>
-              <span className="text-xs" style={{ color: `${accent}AA` }}>سيتم إيقاف موسيقى الخلفية مؤقتًا ثم إعادتها بعد ثانيتين من الإيقاف</span>
+            <button onClick={startIframeVideo} className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3 overflow-hidden" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>
+              <VideoThumbnailBackdrop video={video} accent={accent} label={presentation.label} />
+              <span className="relative z-10 flex items-center justify-center" style={{ width: "74px", height: "74px", borderRadius: "999px", background: `linear-gradient(135deg, ${accent}d8, rgba(255,255,255,0.24))`, border: "1px solid rgba(255,255,255,0.38)", boxShadow: `0 0 30px ${accent}66, 0 14px 34px rgba(0,0,0,0.35)`, fontSize: "2.35rem", paddingInlineStart: "5px" }}>▶</span>
+              <span className="relative z-10 text-sm font-bold" style={{ textShadow: "0 2px 18px rgba(0,0,0,0.9)" }}>تشغيل الفيديو</span>
+              <span className="relative z-10 text-xs px-3 py-1 rounded-full" style={{ color: "rgba(255,255,255,0.88)", background: "rgba(0,0,0,0.36)", backdropFilter: "blur(10px)" }}>سيتم إيقاف موسيقى الخلفية مؤقتًا ثم إعادتها بعد ثانيتين من الإيقاف</span>
             </button>
           )}
         </div>
       ) : presentation.mode === "native" ? (
-        <video src={presentation.src} controls className="w-full" style={{ maxHeight: "340px", background: "#000" }} onPlay={handleNativeVideoPlay} onPause={handleNativeVideoStop} onEnded={handleNativeVideoStop} />
+        <video src={presentation.src} controls preload="metadata" className="w-full" style={{ maxHeight: "340px", background: "#000" }} onPlay={handleNativeVideoPlay} onPause={handleNativeVideoStop} onEnded={handleNativeVideoStop} />
       ) : (
-        <a href={presentation.src} target="_blank" rel="noreferrer" onClick={notifyVideoPlay} className="min-h-[220px] flex flex-col items-center justify-center gap-3" style={{ background: `linear-gradient(135deg, ${accent}18, rgba(0,0,0,0.74))`, color: accent, fontFamily: "'Cairo', sans-serif" }}>
-          <span style={{ fontSize: "2.2rem" }}>🔗</span>
-          <span className="font-bold">فتح الفيديو من المصدر</span>
-          <span className="text-xs opacity-70">هذه المنصة قد تمنع التضمين داخل الموقع</span>
+        <a href={presentation.src} target="_blank" rel="noreferrer" onClick={notifyVideoPlay} className="relative min-h-[220px] flex flex-col items-center justify-center gap-3 overflow-hidden" style={{ color: "#fff", fontFamily: "'Cairo', sans-serif" }}>
+          <VideoThumbnailBackdrop video={video} accent={accent} label={presentation.label} />
+          <span className="relative z-10" style={{ fontSize: "2.2rem", textShadow: "0 2px 18px rgba(0,0,0,0.85)" }}>🔗</span>
+          <span className="relative z-10 font-bold" style={{ textShadow: "0 2px 18px rgba(0,0,0,0.85)" }}>فتح الفيديو من المصدر</span>
+          <span className="relative z-10 text-xs px-3 py-1 rounded-full" style={{ background: "rgba(0,0,0,0.34)", backdropFilter: "blur(10px)", color: "rgba(255,255,255,0.82)" }}>هذه المنصة قد تمنع التضمين داخل الموقع</span>
         </a>
       )}
       {video.title && (
@@ -461,12 +498,11 @@ export default function MainPage() {
                   fontFamily: "'Amiri', serif",
                   fontSize: "clamp(2.8rem, 10vw, 6rem)",
                   fontWeight: 700,
-                  background: `linear-gradient(90deg, ${accent}aa 0%, ${accent} 30%, #fff8 50%, ${accent} 70%, ${accent}aa 100%)`,
-                  backgroundSize: "200% auto",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  animation: "shimmer-text 4s linear infinite, float-gentle 5s ease-in-out infinite",
+                  color: accent,
+                  WebkitTextFillColor: accent,
+                  background: "transparent",
+                  textShadow: `0 0 24px ${accent}cc, 0 0 54px ${accent}66, 0 0 92px ${accent}22`,
+                  animation: "float-gentle 5s ease-in-out infinite",
                   letterSpacing: lang === "ar" ? "0" : "0.04em",
                 }}>
                   {lang === "ar" ? "أميرة & علاء" : "Amira & Alaa"}

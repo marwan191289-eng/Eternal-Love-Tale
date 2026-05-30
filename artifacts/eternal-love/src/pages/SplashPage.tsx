@@ -38,7 +38,7 @@ function TypewriterNames() {
         }
       `}</style>
       <h1 style={{
-        fontSize: "clamp(2.8rem, 9vw, 5.5rem)",
+        fontSize: "clamp(3.4rem, 11vw, 7.2rem)",
         fontFamily: "'Amiri', serif",
         fontWeight: 700,
         color: "#C8FF00",
@@ -123,13 +123,13 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1.0, ease: "easeOut" }}
-        className="relative text-center px-6 max-w-2xl mx-auto"
+        className="relative text-center px-4 sm:px-6 max-w-4xl mx-auto"
         style={{ zIndex: 10 }}
         onClick={(e) => e.stopPropagation()}
         dir={lang === "ar" ? "rtl" : "ltr"}
       >
         {/* Quran verse */}
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 1.2 }} className="mb-8">
+        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 1.2 }} className="mb-5 sm:mb-7">
           <div className="relative rounded-2xl px-6 py-5 mx-auto max-w-lg" style={{
             background: "rgba(200,255,0,0.04)",
             border: "1px solid rgba(200,255,0,0.18)",
@@ -140,7 +140,7 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
             </div>
             <p style={{
               fontFamily: "'Amiri', serif",
-              fontSize: "clamp(1rem, 2.8vw, 1.25rem)",
+              fontSize: "clamp(1.05rem, 2.4vw, 1.55rem)",
               color: "rgba(200,255,0,0.85)",
               lineHeight: "2",
               animation: "quran-glow 3s ease-in-out infinite",
@@ -169,8 +169,8 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 1 }}
-          className="relative mx-auto mb-6 flex items-center justify-center"
-          style={{ width: "290px", height: "290px" }}
+          className="relative mx-auto mb-5 sm:mb-7 flex items-center justify-center"
+          style={{ width: "clamp(330px, 46vw, 520px)", height: "clamp(330px, 46vw, 520px)" }}
         >
           <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(200,255,0,0.35)", animation: "ring-spin-cw 10s linear infinite" }} />
           <div className="absolute inset-4 rounded-full" style={{ border: "1.5px solid rgba(200,255,0,0.2)", animation: "ring-spin-ccw 6s linear infinite" }} />
@@ -180,7 +180,7 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
             src={displayLogo}
             alt="شعار"
             style={{
-              height: "190px",
+              height: "clamp(260px, 36vw, 430px)",
               width: "auto",
               objectFit: "contain",
               position: "relative",

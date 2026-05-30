@@ -10,12 +10,15 @@ interface Particle {
   size: number;
   decay: number;
   gravity: number;
-  trail: { x: number; y: number }[];
+  drag: number;
+  shimmer: number;
+  trail: { x: number; y: number; alpha: number }[];
 }
 
 interface Rocket {
   x: number;
   y: number;
+  vx: number;
   vy: number;
   targetY: number;
   color: string;
@@ -23,16 +26,16 @@ interface Rocket {
   exploded: boolean;
 }
 
-const ELEGANT_PALETTES = [
-  ["#FFD700", "#FFF8DC", "#DAA520", "#FFFACD"],
-  ["#E8D5B7", "#C9A84C", "#FFE4B5", "#F4E4C1"],
-  ["#B0E0E6", "#87CEEB", "#E0F7FA", "#B2EBF2"],
-  ["#DDA0DD", "#EE82EE", "#F8BBD9", "#E1BEE7"],
-  ["#98FB98", "#90EE90", "#E8F5E9", "#C8E6C9"],
-  ["#FFB6C1", "#FFC0CB", "#FCE4EC", "#F8BBD9"],
-  ["#F0E68C", "#FFFACD", "#FFF9C4", "#FFEE58"],
-  ["#D4AF37", "#C5A028", "#FFE57A", "#FFF176"],
+const BURJ_KHALIFA_PALETTES = [
+  ["#FFD76A", "#FFF4C2", "#FFFFFF", "#C9A54A", "#8DEBFF"],
+  ["#D7F7FF", "#FFFFFF", "#9FE7FF", "#FFE8A3", "#B6F3FF"],
+  ["#F7D77B", "#FFF9E6", "#D6B15E", "#FFFFFF", "#B9FFF4"],
+  ["#E8F4FF", "#FFFFFF", "#C6D9FF", "#FFE7B8", "#D2FFEE"],
 ];
+
+function randomFrom<T>(items: T[]) {
+  return items[Math.floor(Math.random() * items.length)];
+}
 
 export default function Fireworks({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -49,136 +52,138 @@ export default function Fireworks({ active }: { active: boolean }) {
     if (!ctx) return;
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalCompositeOperation = "lighter";
     };
     resize();
     window.addEventListener("resize", resize);
 
-    function launchRocket() {
-      if (!canvas) return;
-      const palette = ELEGANT_PALETTES[Math.floor(Math.random() * ELEGANT_PALETTES.length)];
-      const x = canvas.width * (0.15 + Math.random() * 0.7);
-      const targetY = canvas.height * (0.1 + Math.random() * 0.35);
-      const speed = 12 + Math.random() * 8;
+    const w = () => window.innerWidth;
+    const h = () => window.innerHeight;
+
+    function launchRocket(column?: number) {
+      const palette = randomFrom(BURJ_KHALIFA_PALETTES);
+      const baseX = column === undefined ? 0.12 + Math.random() * 0.76 : column;
+      const x = w() * baseX + (Math.random() - 0.5) * 28;
+      const targetY = h() * (0.08 + Math.random() * 0.34);
+      const speed = 10.5 + Math.random() * 4.6;
       rocketsRef.current.push({
         x,
-        y: canvas.height + 10,
+        y: h() + 18,
+        vx: (Math.random() - 0.5) * 0.7,
         vy: -speed,
         targetY,
-        color: palette[0],
+        color: randomFrom(palette),
         trail: [],
         exploded: false,
       });
     }
 
+    function addParticle(x: number, y: number, angle: number, speed: number, color: string, size: number, decay: number, gravity: number, drag = 0.986) {
+      particlesRef.current.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        alpha: 1,
+        color,
+        size,
+        decay,
+        gravity,
+        drag,
+        shimmer: 0.72 + Math.random() * 0.7,
+        trail: [],
+      });
+    }
+
     function explode(rocket: Rocket) {
-      const palette = ELEGANT_PALETTES[Math.floor(Math.random() * ELEGANT_PALETTES.length)];
-      const count = 80 + Math.floor(Math.random() * 60);
+      const palette = randomFrom(BURJ_KHALIFA_PALETTES);
       const style = Math.random();
+      const count = style < 0.38 ? 210 : style < 0.72 ? 170 : 140;
+      const ringCount = style < 0.72 ? 2 : 3;
 
-      for (let i = 0; i < count; i++) {
-        let angle: number;
-        let speed: number;
-
-        if (style < 0.33) {
-          // Spherical burst
-          angle = (Math.PI * 2 * i) / count;
-          speed = 3 + Math.random() * 4;
-        } else if (style < 0.66) {
-          // Star burst
-          angle = (Math.PI * 2 * i) / count;
-          const isPetal = i % 5 === 0;
-          speed = isPetal ? 6 + Math.random() * 3 : 2 + Math.random() * 2;
-        } else {
-          // Random spray
-          angle = Math.random() * Math.PI * 2;
-          speed = 1 + Math.random() * 5;
+      for (let ring = 0; ring < ringCount; ring++) {
+        const radiusBoost = 1 + ring * 0.36;
+        for (let i = 0; i < count / ringCount; i++) {
+          const even = (Math.PI * 2 * i) / (count / ringCount);
+          const angle = style < 0.72 ? even + (Math.random() - 0.5) * 0.06 : Math.random() * Math.PI * 2;
+          const chrysanthemum = 2.4 + Math.random() * 3.2;
+          const palm = i % 18 === 0 ? 7.2 + Math.random() * 2.6 : chrysanthemum;
+          const speed = (style < 0.38 ? chrysanthemum : palm) * radiusBoost;
+          const color = randomFrom(palette);
+          addParticle(rocket.x, rocket.y, angle, speed, color, 0.9 + Math.random() * 2.3, 0.0075 + Math.random() * 0.012, 0.035 + Math.random() * 0.035);
         }
-
-        const color = palette[Math.floor(Math.random() * palette.length)];
-        particlesRef.current.push({
-          x: rocket.x,
-          y: rocket.y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 1,
-          alpha: 1,
-          color,
-          size: 1.5 + Math.random() * 2.5,
-          decay: 0.012 + Math.random() * 0.015,
-          gravity: 0.06 + Math.random() * 0.04,
-          trail: [],
-        });
       }
 
-      // Add glitter sparks
-      for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 0.5 + Math.random() * 2;
-        particlesRef.current.push({
-          x: rocket.x,
-          y: rocket.y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          alpha: 1,
-          color: "#FFFFFF",
-          size: 0.8 + Math.random() * 1.5,
-          decay: 0.02 + Math.random() * 0.02,
-          gravity: 0.03,
-          trail: [],
-        });
+      // Cascading golden rain, similar to premium skyline displays.
+      for (let i = 0; i < 56; i++) {
+        const angle = Math.PI / 2 + (Math.random() - 0.5) * 1.05;
+        addParticle(rocket.x, rocket.y, angle, 1.2 + Math.random() * 3.2, randomFrom(["#FFD76A", "#FFF4C2", "#FFFFFF"]), 0.7 + Math.random() * 1.5, 0.010 + Math.random() * 0.015, 0.075 + Math.random() * 0.045, 0.992);
+      }
+
+      // Flash core.
+      for (let i = 0; i < 18; i++) {
+        addParticle(rocket.x, rocket.y, Math.random() * Math.PI * 2, 0.2 + Math.random() * 1.6, "#FFFFFF", 1.8 + Math.random() * 2.8, 0.04 + Math.random() * 0.02, 0.01, 0.97);
       }
     }
 
     function animate(ts: number) {
-      if (!canvas || !ctx) return;
+      if (!ctx) return;
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(0, 0, 8, 0.16)";
+      ctx.fillRect(0, 0, w(), h());
+      ctx.restore();
+      ctx.globalCompositeOperation = "lighter";
 
-      // Dark fade trail
-      ctx.fillStyle = "rgba(10, 8, 20, 0.18)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Launch rockets periodically
-      if (ts - lastRocketRef.current > 600 + Math.random() * 800) {
-        launchRocket();
-        if (Math.random() > 0.5) launchRocket();
+      if (ts - lastRocketRef.current > 360 + Math.random() * 520) {
+        const sequence = Math.random();
+        if (sequence > 0.72) {
+          [0.18, 0.32, 0.5, 0.68, 0.82].forEach((x, i) => setTimeout(() => launchRocket(x), i * 110));
+        } else {
+          launchRocket();
+          if (Math.random() > 0.38) launchRocket();
+        }
         lastRocketRef.current = ts;
       }
 
-      // Update & draw rockets
       rocketsRef.current = rocketsRef.current.filter((r) => {
-        if (!canvas) return false;
         if (r.exploded) return false;
-
         r.trail.unshift({ x: r.x, y: r.y, alpha: 1 });
-        if (r.trail.length > 18) r.trail.pop();
+        if (r.trail.length > 26) r.trail.pop();
 
-        // Draw trail
         r.trail.forEach((t, i) => {
-          const a = (1 - i / r.trail.length) * 0.7;
+          const a = (1 - i / r.trail.length) * 0.8;
           ctx.save();
           ctx.globalAlpha = a;
-          ctx.beginPath();
-          ctx.arc(t.x, t.y, 2 - (i / r.trail.length) * 1.5, 0, Math.PI * 2);
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = r.color;
           ctx.fillStyle = r.color;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, Math.max(0.7, 2.5 - i * 0.08), 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         });
 
-        // Draw rocket head
         ctx.save();
         ctx.globalAlpha = 1;
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 24;
         ctx.shadowColor = r.color;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 3.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
+        r.x += r.vx;
         r.y += r.vy;
-        r.vy += 0.15;
-
-        if (r.y <= r.targetY || r.vy >= 0) {
+        r.vy += 0.13;
+        if (r.y <= r.targetY || r.vy >= -0.5) {
           explode(r);
           r.exploded = true;
           return false;
@@ -186,72 +191,64 @@ export default function Fireworks({ active }: { active: boolean }) {
         return true;
       });
 
-      // Update & draw particles
       particlesRef.current = particlesRef.current.filter((p) => {
-        p.trail.unshift({ x: p.x, y: p.y });
-        if (p.trail.length > 5) p.trail.pop();
+        p.trail.unshift({ x: p.x, y: p.y, alpha: p.alpha });
+        if (p.trail.length > 9) p.trail.pop();
 
-        // Draw trail
         p.trail.forEach((t, i) => {
+          const a = p.alpha * (1 - i / p.trail.length) * 0.48;
           ctx.save();
-          ctx.globalAlpha = p.alpha * (1 - i / p.trail.length) * 0.4;
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = Math.max(0.5, p.size * (1 - i / p.trail.length));
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = p.color;
           ctx.beginPath();
-          ctx.arc(t.x, t.y, p.size * (1 - i / p.trail.length) * 0.6, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
+          ctx.moveTo(t.x, t.y);
+          const next = p.trail[i + 1];
+          ctx.lineTo(next?.x ?? p.x, next?.y ?? p.y);
+          ctx.stroke();
           ctx.restore();
         });
 
-        // Draw particle
+        const sparkle = 0.65 + Math.sin(Date.now() * 0.018 * p.shimmer) * 0.35;
         ctx.save();
-        ctx.globalAlpha = p.alpha;
+        ctx.globalAlpha = Math.max(0, p.alpha * sparkle);
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = p.color;
+        ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = p.color;
         ctx.fill();
         ctx.restore();
 
         p.x += p.vx;
         p.y += p.vy;
         p.vy += p.gravity;
-        p.vx *= 0.985;
+        p.vx *= p.drag;
+        p.vy *= p.drag;
         p.alpha -= p.decay;
-
-        return p.alpha > 0.02;
+        return p.alpha > 0.015;
       });
 
       animRef.current = requestAnimationFrame(animate);
     }
 
     animRef.current = requestAnimationFrame(animate);
-
     return () => {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener("resize", resize);
-      if (ctx && canvas) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      ctx.clearRect(0, 0, w(), h());
       rocketsRef.current = [];
       particlesRef.current = [];
     };
   }, [active]);
 
   if (!active) return null;
-
   return (
     <canvas
       ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        zIndex: 50,
-      }}
+      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }}
     />
   );
 }

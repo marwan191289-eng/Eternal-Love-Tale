@@ -77,7 +77,7 @@ function VerticalStrip({
   speed: number;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef(0);
+  const posRef = useRef(direction === "down" ? -90 : 0);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
@@ -107,8 +107,8 @@ function VerticalStrip({
         [side]: 0,
         width: size + 28,
         zIndex: 5,
-        maskImage: "linear-gradient(to bottom, transparent 0%, black 13%, black 87%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 13%, black 87%, transparent 100%)",
+        maskImage: "linear-gradient(to bottom, transparent 0%, black 7%, black 94%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 7%, black 94%, transparent 100%)",
       }}
     >
       <div
@@ -121,7 +121,7 @@ function VerticalStrip({
             : "linear-gradient(to right, rgba(0,229,255,0.045), transparent)",
         }}
       />
-      <div ref={trackRef} className="relative flex flex-col items-center pt-24" style={{ willChange: "transform", paddingLeft: 12, paddingRight: 12 }}>
+      <div ref={trackRef} className="relative flex flex-col items-center" style={{ willChange: "transform", paddingTop: side === "left" ? 18 : 52, paddingLeft: 12, paddingRight: 12 }}>
         {items.map((item, i) => <StripItem key={`a-${i}`} item={item} size={size} />)}
         {items.map((item, i) => <StripItem key={`b-${i}`} item={item} size={size} />)}
       </div>
@@ -147,7 +147,7 @@ export default function VerticalImageStrips() {
   return (
     <>
       <VerticalStrip direction="up" side="right" items={items} size={84} speed={0.32} />
-      <VerticalStrip direction="down" side="left" items={items} size={84} speed={0.32} />
+      <VerticalStrip direction="down" side="left" items={items} size={84} speed={0.22} />
     </>
   );
 }
