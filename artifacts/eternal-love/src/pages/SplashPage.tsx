@@ -125,7 +125,6 @@ export default function SplashPage({ onEnter }: SplashPageProps) {
         transition={{ duration: 1.0, ease: "easeOut" }}
         className="relative text-center px-4 sm:px-6 max-w-4xl mx-auto"
         style={{ zIndex: 10 }}
-        onClick={(e) => e.stopPropagation()}
         dir={lang === "ar" ? "rtl" : "ltr"}
       >
         {/* Quran verse */}
