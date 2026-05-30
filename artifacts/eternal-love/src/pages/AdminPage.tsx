@@ -967,7 +967,7 @@ function LogoTab({ logoUrl, setLogoUrl, showSaved }: {
           <p className="text-sm font-semibold mb-2" style={{ color: "#C8FF00", fontFamily: "'Cairo', sans-serif" }}>أو أدخل رابط الشعار</p>
           <div className="flex gap-3">
             <div className="flex-1"><Input value={url} onChange={setUrl} placeholder="https://example.com/logo.png" dir="ltr" /></div>
-            <Btn onClick={() => { setLogoUrl(url.trim()); showSaved(); }} disabled={!url.trim()}>حفظ</Btn>
+            <Btn onClick={() => { setLogoUrl(normalizeImageUrl(url.trim())); showSaved(); }} disabled={!url.trim()}>حفظ</Btn>
           </div>
         </div>
 
