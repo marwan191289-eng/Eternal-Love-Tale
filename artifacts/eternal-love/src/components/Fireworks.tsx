@@ -1,255 +1,214 @@
 import { useEffect, useRef } from "react";
 
-interface Particle {
+interface Spark {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  alpha: number;
+  life: number;
+  maxLife: number;
   color: string;
   size: number;
-  decay: number;
   gravity: number;
-  drag: number;
-  shimmer: number;
-  trail: { x: number; y: number; alpha: number }[];
 }
 
-interface Rocket {
+interface Shot {
   x: number;
   y: number;
   vx: number;
   vy: number;
   targetY: number;
   color: string;
-  trail: { x: number; y: number; alpha: number }[];
-  exploded: boolean;
 }
 
-const BURJ_KHALIFA_PALETTES = [
-  ["#FFD76A", "#FFF4C2", "#FFFFFF", "#C9A54A", "#8DEBFF"],
-  ["#D7F7FF", "#FFFFFF", "#9FE7FF", "#FFE8A3", "#B6F3FF"],
-  ["#F7D77B", "#FFF9E6", "#D6B15E", "#FFFFFF", "#B9FFF4"],
-  ["#E8F4FF", "#FFFFFF", "#C6D9FF", "#FFE7B8", "#D2FFEE"],
+const PALETTES = [
+  ["#FFD86B", "#FFF7D6", "#FFFFFF", "#7DEBFF"],
+  ["#FFFFFF", "#D7F7FF", "#FFDFA3", "#B8FFF2"],
+  ["#FFE57A", "#FFF4BF", "#F8C66A", "#FFFFFF"],
 ];
 
-function randomFrom<T>(items: T[]) {
-  return items[Math.floor(Math.random() * items.length)];
-}
+const pick = <T,>(arr: T[]) => arr[(Math.random() * arr.length) | 0];
 
 export default function Fireworks({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef<number>(0);
-  const rocketsRef = useRef<Rocket[]>([]);
-  const particlesRef = useRef<Particle[]>([]);
-  const lastRocketRef = useRef<number>(0);
+  const rafRef = useRef<number>(0);
+  const shotsRef = useRef<Shot[]>([]);
+  const sparksRef = useRef<Spark[]>([]);
+  const lastLaunchRef = useRef(0);
+  const frameRef = useRef(0);
 
   useEffect(() => {
     if (!active) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const canvasEl = canvas;
+    const ctx = canvasEl.getContext("2d", { alpha: true });
     if (!ctx) return;
+    const context = ctx;
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(window.innerHeight * dpr);
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.globalCompositeOperation = "lighter";
-    };
+    const dpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
+    const vw = () => window.innerWidth;
+    const vh = () => window.innerHeight;
+
+    function resize() {
+      const ratio = dpr();
+      canvasEl.width = Math.floor(vw() * ratio);
+      canvasEl.height = Math.floor(vh() * ratio);
+      canvasEl.style.width = `${vw()}px`;
+      canvasEl.style.height = `${vh()}px`;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    }
+
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", resize, { passive: true });
 
-    const w = () => window.innerWidth;
-    const h = () => window.innerHeight;
-
-    function launchRocket(column?: number) {
-      const palette = randomFrom(BURJ_KHALIFA_PALETTES);
-      const baseX = column === undefined ? 0.12 + Math.random() * 0.76 : column;
-      const x = w() * baseX + (Math.random() - 0.5) * 28;
-      const targetY = h() * (0.08 + Math.random() * 0.34);
-      const speed = 17 + Math.random() * 8;
-      rocketsRef.current.push({
-        x,
-        y: h() + 18,
+    function launch(xRatio = 0.12 + Math.random() * 0.76) {
+      const palette = pick(PALETTES);
+      shotsRef.current.push({
+        x: vw() * xRatio + (Math.random() - 0.5) * 22,
+        y: vh() + 10,
         vx: (Math.random() - 0.5) * 0.7,
-        vy: -speed,
-        targetY,
-        color: randomFrom(palette),
-        trail: [],
-        exploded: false,
+        vy: -(22 + Math.random() * 9),
+        targetY: vh() * (0.08 + Math.random() * 0.28),
+        color: pick(palette),
       });
     }
 
-    function addParticle(x: number, y: number, angle: number, speed: number, color: string, size: number, decay: number, gravity: number, drag = 0.986) {
-      particlesRef.current.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        alpha: 1,
-        color,
-        size,
-        decay,
-        gravity,
-        drag,
-        shimmer: 0.72 + Math.random() * 0.7,
-        trail: [],
-      });
-    }
+    function burst(x: number, y: number, palette = pick(PALETTES)) {
+      const current = sparksRef.current;
+      const maxRoom = 380 - current.length;
+      if (maxRoom <= 0) return;
+      const count = Math.min(maxRoom, 58 + ((Math.random() * 30) | 0));
+      const ring = Math.random() > 0.35;
 
-    function explode(rocket: Rocket) {
-      const palette = randomFrom(BURJ_KHALIFA_PALETTES);
-      const style = Math.random();
-      const count = style < 0.38 ? 210 : style < 0.72 ? 170 : 140;
-      const ringCount = style < 0.72 ? 2 : 3;
-
-      for (let ring = 0; ring < ringCount; ring++) {
-        const radiusBoost = 1 + ring * 0.36;
-        for (let i = 0; i < count / ringCount; i++) {
-          const even = (Math.PI * 2 * i) / (count / ringCount);
-          const angle = style < 0.72 ? even + (Math.random() - 0.5) * 0.06 : Math.random() * Math.PI * 2;
-          const chrysanthemum = 2.4 + Math.random() * 3.2;
-          const palm = i % 18 === 0 ? 7.2 + Math.random() * 2.6 : chrysanthemum;
-          const speed = (style < 0.38 ? chrysanthemum : palm) * radiusBoost * 1.38;
-          const color = randomFrom(palette);
-          addParticle(rocket.x, rocket.y, angle, speed, color, 0.9 + Math.random() * 2.3, 0.014 + Math.random() * 0.018, 0.052 + Math.random() * 0.048);
-        }
+      for (let i = 0; i < count; i++) {
+        const angle = ring ? (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.1 : Math.random() * Math.PI * 2;
+        const speed = (ring ? 7.5 + Math.random() * 6 : 4 + Math.random() * 9) * 1.38;
+        const life = 26 + Math.random() * 22;
+        current.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life,
+          maxLife: life,
+          color: pick(palette),
+          size: 1.15 + Math.random() * 1.9,
+          gravity: 0.24 + Math.random() * 0.12,
+        });
       }
 
-      // Cascading golden rain, similar to premium skyline displays.
-      for (let i = 0; i < 56; i++) {
-        const angle = Math.PI / 2 + (Math.random() - 0.5) * 1.05;
-        addParticle(rocket.x, rocket.y, angle, 2.4 + Math.random() * 4.4, randomFrom(["#FFD76A", "#FFF4C2", "#FFFFFF"]), 0.7 + Math.random() * 1.5, 0.018 + Math.random() * 0.02, 0.095 + Math.random() * 0.06, 0.992);
-      }
-
-      // Flash core.
-      for (let i = 0; i < 18; i++) {
-        addParticle(rocket.x, rocket.y, Math.random() * Math.PI * 2, 0.2 + Math.random() * 1.6, "#FFFFFF", 1.8 + Math.random() * 2.8, 0.04 + Math.random() * 0.02, 0.01, 0.97);
+      // Quick premium golden rain without heavy per-particle trails.
+      for (let i = 0; i < Math.min(28, 380 - current.length); i++) {
+        const angle = Math.PI / 2 + (Math.random() - 0.5) * 0.78;
+        const speed = 4 + Math.random() * 7;
+        const life = 22 + Math.random() * 18;
+        current.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life,
+          maxLife: life,
+          color: pick(["#FFD86B", "#FFF7D6", "#FFFFFF"]),
+          size: 0.95 + Math.random() * 1.25,
+          gravity: 0.32 + Math.random() * 0.13,
+        });
       }
     }
 
     function animate(ts: number) {
-      if (!ctx) return;
-      ctx.save();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0, 0, 8, 0.16)";
-      ctx.fillRect(0, 0, w(), h());
-      ctx.restore();
-      ctx.globalCompositeOperation = "lighter";
+      // Draw at ~40 FPS instead of 60 FPS to lower CPU without feeling slow.
+      if (ts - frameRef.current < 24) {
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      const dt = Math.min(1.8, (ts - frameRef.current) / 24 || 1);
+      frameRef.current = ts;
 
-      if (ts - lastRocketRef.current > 120 + Math.random() * 220) {
-        const sequence = Math.random();
-        if (sequence > 0.72) {
-          [0.18, 0.32, 0.5, 0.68, 0.82].forEach((x, i) => setTimeout(() => launchRocket(x), i * 52));
+      context.globalCompositeOperation = "source-over";
+      context.clearRect(0, 0, vw(), vh());
+      context.fillStyle = "rgba(0,0,10,0.10)";
+      context.fillRect(0, 0, vw(), vh());
+      context.globalCompositeOperation = "lighter";
+
+      if (ts - lastLaunchRef.current > 120 + Math.random() * 120) {
+        const choreography = Math.random();
+        if (choreography > 0.62) {
+          [0.2, 0.38, 0.56, 0.74].forEach((x, i) => window.setTimeout(() => launch(x), i * 34));
         } else {
-          launchRocket();
-          if (Math.random() > 0.12) launchRocket();
-          if (Math.random() > 0.58) launchRocket();
+          launch();
+          if (Math.random() > 0.3) launch();
         }
-        lastRocketRef.current = ts;
+        lastLaunchRef.current = ts;
       }
 
-      rocketsRef.current = rocketsRef.current.filter((r) => {
-        if (r.exploded) return false;
-        r.trail.unshift({ x: r.x, y: r.y, alpha: 1 });
-        if (r.trail.length > 26) r.trail.pop();
+      shotsRef.current = shotsRef.current.filter((shot) => {
+        context.save();
+        context.globalAlpha = 0.95;
+        context.shadowBlur = 16;
+        context.shadowColor = shot.color;
+        context.strokeStyle = shot.color;
+        context.lineWidth = 2.2;
+        context.beginPath();
+        context.moveTo(shot.x, shot.y + 18);
+        context.lineTo(shot.x, shot.y);
+        context.stroke();
+        context.fillStyle = "#fff";
+        context.beginPath();
+        context.arc(shot.x, shot.y, 2.6, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
 
-        r.trail.forEach((t, i) => {
-          const a = (1 - i / r.trail.length) * 0.8;
-          ctx.save();
-          ctx.globalAlpha = a;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = r.color;
-          ctx.fillStyle = r.color;
-          ctx.beginPath();
-          ctx.arc(t.x, t.y, Math.max(0.7, 2.5 - i * 0.08), 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        });
-
-        ctx.save();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 24;
-        ctx.shadowColor = r.color;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        r.x += r.vx;
-        r.y += r.vy;
-        r.vy += 0.22;
-        if (r.y <= r.targetY || r.vy >= -0.5) {
-          explode(r);
-          r.exploded = true;
+        shot.x += shot.vx * dt;
+        shot.y += shot.vy * dt;
+        shot.vy += 0.62 * dt;
+        if (shot.y <= shot.targetY || shot.vy >= -1.2) {
+          burst(shot.x, shot.y);
           return false;
         }
-        return true;
+        return shot.y > -80;
       });
 
-      particlesRef.current = particlesRef.current.filter((p) => {
-        p.trail.unshift({ x: p.x, y: p.y, alpha: p.alpha });
-        if (p.trail.length > 9) p.trail.pop();
+      sparksRef.current = sparksRef.current.filter((p) => {
+        const alpha = Math.max(0, p.life / p.maxLife);
+        context.save();
+        context.globalAlpha = alpha;
+        context.shadowBlur = 10;
+        context.shadowColor = p.color;
+        context.strokeStyle = p.color;
+        context.lineWidth = Math.max(0.45, p.size * alpha);
+        context.beginPath();
+        context.moveTo(p.x, p.y);
+        context.lineTo(p.x - p.vx * 1.45, p.y - p.vy * 1.45);
+        context.stroke();
+        context.fillStyle = p.color;
+        context.beginPath();
+        context.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
 
-        p.trail.forEach((t, i) => {
-          const a = p.alpha * (1 - i / p.trail.length) * 0.48;
-          ctx.save();
-          ctx.globalAlpha = a;
-          ctx.strokeStyle = p.color;
-          ctx.lineWidth = Math.max(0.5, p.size * (1 - i / p.trail.length));
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = p.color;
-          ctx.beginPath();
-          ctx.moveTo(t.x, t.y);
-          const next = p.trail[i + 1];
-          ctx.lineTo(next?.x ?? p.x, next?.y ?? p.y);
-          ctx.stroke();
-          ctx.restore();
-        });
-
-        const sparkle = 0.65 + Math.sin(Date.now() * 0.018 * p.shimmer) * 0.35;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.alpha * sparkle);
-        ctx.shadowBlur = 18;
-        ctx.shadowColor = p.color;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += p.gravity;
-        p.vx *= p.drag;
-        p.vy *= p.drag;
-        p.alpha -= p.decay;
-        return p.alpha > 0.015;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vx *= 0.965;
+        p.vy = p.vy * 0.965 + p.gravity * dt;
+        p.life -= 1.85 * dt;
+        return p.life > 0;
       });
 
-      animRef.current = requestAnimationFrame(animate);
+      rafRef.current = requestAnimationFrame(animate);
     }
 
-    animRef.current = requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(animate);
     return () => {
-      cancelAnimationFrame(animRef.current);
+      cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
-      ctx.clearRect(0, 0, w(), h());
-      rocketsRef.current = [];
-      particlesRef.current = [];
+      shotsRef.current = [];
+      sparksRef.current = [];
+      context.clearRect(0, 0, vw(), vh());
     };
   }, [active]);
 
   if (!active) return null;
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }}
-    />
-  );
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }} />;
 }

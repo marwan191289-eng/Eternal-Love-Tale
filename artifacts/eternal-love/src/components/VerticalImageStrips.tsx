@@ -14,7 +14,7 @@ const PLACEHOLDER_STRIPS = [
 
 function buildItems(images: { id: string; url: string; alt: string; visible: boolean }[]) {
   const visible = images.filter((i) => i.visible);
-  if (visible.length >= 4) return [...visible, ...visible];
+  if (visible.length >= 4) return visible.slice(0, 10);
   return [...PLACEHOLDER_STRIPS, ...PLACEHOLDER_STRIPS];
 }
 
@@ -42,6 +42,8 @@ function StripItem({ item, size }: { item: StripItemData; size: number }) {
         <img
           src={item.url}
           alt={item.alt || ""}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover"
           style={{ filter: "saturate(1.12) contrast(1.05)", opacity: 0.78 }}
         />
@@ -146,8 +148,8 @@ export default function VerticalImageStrips() {
 
   return (
     <>
-      <VerticalStrip direction="up" side="right" items={items} size={84} speed={0.32} />
-      <VerticalStrip direction="down" side="left" items={items} size={84} speed={0.22} />
+      <VerticalStrip direction="up" side="right" items={items} size={76} speed={0.24} />
+      <VerticalStrip direction="down" side="left" items={items} size={76} speed={0.18} />
     </>
   );
 }
