@@ -71,7 +71,7 @@ export default function Fireworks({ active }: { active: boolean }) {
       const baseX = column === undefined ? 0.12 + Math.random() * 0.76 : column;
       const x = w() * baseX + (Math.random() - 0.5) * 28;
       const targetY = h() * (0.08 + Math.random() * 0.34);
-      const speed = 10.5 + Math.random() * 4.6;
+      const speed = 17 + Math.random() * 8;
       rocketsRef.current.push({
         x,
         y: h() + 18,
@@ -114,16 +114,16 @@ export default function Fireworks({ active }: { active: boolean }) {
           const angle = style < 0.72 ? even + (Math.random() - 0.5) * 0.06 : Math.random() * Math.PI * 2;
           const chrysanthemum = 2.4 + Math.random() * 3.2;
           const palm = i % 18 === 0 ? 7.2 + Math.random() * 2.6 : chrysanthemum;
-          const speed = (style < 0.38 ? chrysanthemum : palm) * radiusBoost;
+          const speed = (style < 0.38 ? chrysanthemum : palm) * radiusBoost * 1.38;
           const color = randomFrom(palette);
-          addParticle(rocket.x, rocket.y, angle, speed, color, 0.9 + Math.random() * 2.3, 0.0075 + Math.random() * 0.012, 0.035 + Math.random() * 0.035);
+          addParticle(rocket.x, rocket.y, angle, speed, color, 0.9 + Math.random() * 2.3, 0.014 + Math.random() * 0.018, 0.052 + Math.random() * 0.048);
         }
       }
 
       // Cascading golden rain, similar to premium skyline displays.
       for (let i = 0; i < 56; i++) {
         const angle = Math.PI / 2 + (Math.random() - 0.5) * 1.05;
-        addParticle(rocket.x, rocket.y, angle, 1.2 + Math.random() * 3.2, randomFrom(["#FFD76A", "#FFF4C2", "#FFFFFF"]), 0.7 + Math.random() * 1.5, 0.010 + Math.random() * 0.015, 0.075 + Math.random() * 0.045, 0.992);
+        addParticle(rocket.x, rocket.y, angle, 2.4 + Math.random() * 4.4, randomFrom(["#FFD76A", "#FFF4C2", "#FFFFFF"]), 0.7 + Math.random() * 1.5, 0.018 + Math.random() * 0.02, 0.095 + Math.random() * 0.06, 0.992);
       }
 
       // Flash core.
@@ -141,13 +141,14 @@ export default function Fireworks({ active }: { active: boolean }) {
       ctx.restore();
       ctx.globalCompositeOperation = "lighter";
 
-      if (ts - lastRocketRef.current > 360 + Math.random() * 520) {
+      if (ts - lastRocketRef.current > 120 + Math.random() * 220) {
         const sequence = Math.random();
         if (sequence > 0.72) {
-          [0.18, 0.32, 0.5, 0.68, 0.82].forEach((x, i) => setTimeout(() => launchRocket(x), i * 110));
+          [0.18, 0.32, 0.5, 0.68, 0.82].forEach((x, i) => setTimeout(() => launchRocket(x), i * 52));
         } else {
           launchRocket();
-          if (Math.random() > 0.38) launchRocket();
+          if (Math.random() > 0.12) launchRocket();
+          if (Math.random() > 0.58) launchRocket();
         }
         lastRocketRef.current = ts;
       }
@@ -182,7 +183,7 @@ export default function Fireworks({ active }: { active: boolean }) {
 
         r.x += r.vx;
         r.y += r.vy;
-        r.vy += 0.13;
+        r.vy += 0.22;
         if (r.y <= r.targetY || r.vy >= -0.5) {
           explode(r);
           r.exploded = true;
