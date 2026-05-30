@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { normalizeImageUrl } from "@/lib/urlUtils";
 import { DEFAULT_GALLERY_IMAGES, DEFAULT_MUSIC_URL } from "@/data/defaultAssets";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -205,14 +206,18 @@ function settingsPatch(rows: { key: string; value: unknown }[]) {
   const patch: Partial<typeof DEFAULT_SETTINGS> = {};
   for (const row of rows) {
     if (row.key in DEFAULT_SETTINGS) {
-      (patch as Record<string, unknown>)[row.key] = row.value;
+      if (row.key === "logoUrl") {
+        (patch as Record<string, unknown>)[row.key] = normalizeImageUrl(row.value);
+      } else {
+        (patch as Record<string, unknown>)[row.key] = row.value;
+      }
     }
   }
   return patch;
 }
 
 const toImageRow = (img: ImageItem, position: number) => ({ id: img.id, url: img.url, alt: img.alt, visible: img.visible, position });
-const fromImageRow = (row: any): ImageItem => ({ id: row.id, url: row.url, alt: row.alt ?? "", visible: Boolean(row.visible) });
+const fromImageRow = (row: any): ImageItem => ({ id: row.id, url: normalizeImageUrl(row.url), alt: row.alt ?? "", visible: Boolean(row.visible) });
 const toVideoRow = (video: VideoItem, position: number) => ({ id: video.id, url: video.url, title: video.title, type: video.type, visible: video.visible, position });
 const normalizeVideoType = (type: string): VideoSourceType => {
   const allowed: VideoSourceType[] = ["youtube", "vimeo", "google-drive", "dropbox", "onedrive", "tiktok", "instagram", "facebook", "dailymotion", "twitch", "direct", "motion", "link", "file"];
