@@ -216,7 +216,7 @@ function settingsPatch(rows: { key: string; value: unknown }[]) {
   return patch;
 }
 
-const toImageRow = (img: ImageItem, position: number) => ({ id: img.id, url: img.url, alt: img.alt, visible: img.visible, position });
+const toImageRow = (img: ImageItem, position: number) => ({ id: img.id, url: normalizeImageUrl(img.url), alt: img.alt, visible: img.visible, position });
 const fromImageRow = (row: any): ImageItem => ({ id: row.id, url: normalizeImageUrl(row.url), alt: row.alt ?? "", visible: Boolean(row.visible) });
 const toVideoRow = (video: VideoItem, position: number) => ({ id: video.id, url: video.url, title: video.title, type: video.type, visible: video.visible, position });
 const normalizeVideoType = (type: string): VideoSourceType => {
@@ -340,7 +340,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   addImage: (img) => {
-    const item: ImageItem = { ...img, id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`, visible: true };
+    const item: ImageItem = { ...img, id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`, visible: true, url: normalizeImageUrl(img.url) };
     const next = [...get().images, item];
     set({ images: next });
     if (supabase) remoteWrite("addImage", supabase.from("el_gallery_images").insert(toImageRow(item, next.length - 1)));
@@ -427,5 +427,5 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   setSelectedCombinedTheme: (id) => { set({ selectedCombinedTheme: id }); upsertSetting("selectedCombinedTheme", id); },
   setMusicUrl: (url) => { set({ musicUrl: url }); upsertSetting("musicUrl", url); },
   setVolume: (v) => { set({ volume: v }); upsertSetting("volume", v); },
-  setLogoUrl: (url) => { set({ logoUrl: url }); upsertSetting("logoUrl", url); },
+  setLogoUrl: (url) => { const normalizedUrl = normalizeImageUrl(url); set({ logoUrl: normalizedUrl }); upsertSetting("logoUrl", normalizedUrl); },
 }));
