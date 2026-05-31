@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Analytics } from "@vercel/analytics/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
@@ -166,6 +167,7 @@ function App() {
             </SiteLock>
           </WouterRouter>
           <Toaster />
+          <Analytics />
         </TooltipProvider>
       </QueryClientProvider>
     </LangProvider>
